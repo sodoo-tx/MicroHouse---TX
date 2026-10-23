@@ -9,6 +9,7 @@ It is a single static page. There is no server, no database and no sign-up. Desi
 - **Landing page** with an animated hero, a factory-to-site assembly animation, the signature homes, features, specifications and questions.
 - **Designer** where people pick a plan, change the shape, move doors, windows and furniture, and see the 3D model and price update.
 - **Auto-arrange and arrangement search** that place furniture with clear walkways, short pipe runs and beds kept at least 1.8 m from any exit.
+- **Ready for two**: a checklist of everything a couple needs, Japanese and Korean space-saving furniture (tatami bed with drawers, oshiire, kotatsu, ofuro, jang, bapsang), overhead cabinets and a storage target of 2,500 L. All 21 layouts pass it.
 - **Off-grid sizing** for solar, battery and rainwater storage, with a draggable compass to set north and check the sun.
 - **Zoom** buttons for the plan and 3D view, plus the + and − keys.
 - **Cost estimate** with every line, cost-saving ideas and a lowest-price button. All prices are editable.

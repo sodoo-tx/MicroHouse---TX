@@ -548,6 +548,8 @@ body.mode-site::before{content:""; position:fixed; inset:0 0 auto; height:env(sa
 .compass:focus-visible{outline:2px solid var(--act); border-radius:50%}
 @media (max-width:880px){ .zoom-ctl{bottom:84px} .zoom3{bottom:14px} .compass{top:60px; right:8px; width:64px; height:74px} .compass svg{width:60px; height:60px} }
 @media (max-width:480px){ .compass{top:62px} }
+.ready li{padding:5px 0} .rk{width:22px; height:22px; border-radius:50%; display:inline-grid; place-items:center; font-size:12px; font-weight:800; flex:0 0 auto}
+.rk.ok{background:var(--act-soft); color:var(--ok)} .rk.no{background:var(--wool-soft); color:var(--ink)}
 </style>
 </head>
 <body class="mode-site">

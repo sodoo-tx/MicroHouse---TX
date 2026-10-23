@@ -12,8 +12,8 @@ const r1 = v => Math.round(v * 10) / 10;
 
 /* ======================= CATALOGUE ======================= */
 const CAT = {
-  bed160:   {label:'Double bed 160', grp:'Sleep',   cls:'c-sleep',   w:1600, d:2050, h:600,  cost:220, clear:450, wall:true,  zone:'bed'},
-  bed140:   {label:'Bed 140',        grp:'Sleep',   cls:'c-sleep',   w:1400, d:2050, h:600,  cost:190, clear:450, wall:true,  zone:'bed'},
+  bed160:   {label:'Double bed 160, drawers', grp:'Sleep',   cls:'c-sleep',   w:1600, d:2050, h:600,  cost:260, clear:450, wall:true,  zone:'bed', store:400},
+  bed140:   {label:'Bed 140, drawers',        grp:'Sleep',   cls:'c-sleep',   w:1400, d:2050, h:600,  cost:230, clear:450, wall:true,  zone:'bed', store:350},
   bed90:    {label:'Single bed 90',  grp:'Sleep',   cls:'c-sleep',   w:900,  d:2000, h:600,  cost:120, clear:450, wall:true,  zone:'bed'},
   wallbed:  {label:'Wall bed, folds up', grp:'Sleep', cls:'c-sleep', w:1700, d:450, h:2100, cost:380, clear:1700, wall:true, zone:'bed'},
   sofabed:  {label:'Sofa bed',       grp:'Living',  cls:'c-living',  w:1900, d:950,  h:850,  cost:260, clear:1100,wall:true,  zone:'living'},
@@ -22,9 +22,9 @@ const CAT = {
   foldtable:{label:'Fold-down table',grp:'Living',  cls:'c-living',  w:900,  d:450,  h:750,  cost:45, clear:600, wall:true,  zone:'living'},
   desk:     {label:'Desk and chair', grp:'Living',  cls:'c-living',  w:1000, d:1100, h:750,  cost:70, clear:0,   wall:true,  zone:'work'},
   stove:    {label:'Wood stove',     grp:'Living',  cls:'c-tech',    w:500,  d:500,  h:900,  cost:320, clear:600, wall:true,  zone:'living'},
-  wardrobe: {label:'Wardrobe',       grp:'Storage', cls:'c-store',   w:1000, d:600,  h:2100, cost:120, clear:600, wall:true,  zone:'store'},
-  shelf:    {label:'Shelving',       grp:'Storage', cls:'c-store',   w:800,  d:350,  h:2000, cost:35,  clear:450, wall:true,  zone:'store'},
-  shoe:     {label:'Entry bench',    grp:'Storage', cls:'c-store',   w:800,  d:400,  h:450,  cost:30,  clear:400, wall:true,  zone:'entry'},
+  wardrobe: {label:'Wardrobe',       grp:'Storage', cls:'c-store',   w:1000, d:600,  h:2100, cost:120, clear:600, wall:true,  zone:'store', store:900},
+  shelf:    {label:'Shelving',       grp:'Storage', cls:'c-store',   w:800,  d:350,  h:2000, cost:35,  clear:450, wall:true,  zone:'store', store:250},
+  shoe:     {label:'Entry bench',    grp:'Storage', cls:'c-store',   w:800,  d:400,  h:450,  cost:30,  clear:400, wall:true,  zone:'entry', store:80},
   kitchen:  {label:'Kitchen run',    grp:'Kitchen', cls:'c-kitchen', w:1800, d:600,  h:900,  cost:0,   clear:900, wall:true,  zone:'kitchen', opt:{sink:.72, cook:.25, fridge:true}},
   fridge:   {label:'Tall fridge',    grp:'Kitchen', cls:'c-kitchen', w:600,  d:650,  h:1800, cost:280, clear:900, wall:true,  zone:'kitchen'},
   shower:   {label:'Shower 800',     grp:'Bath',    cls:'c-bath',    w:800,  d:800,  h:2000, cost:170, clear:550, wall:true,  zone:'wet'},
@@ -32,8 +32,26 @@ const CAT = {
   toilet:   {label:'Dry toilet',     grp:'Bath',    cls:'c-bath',    w:450,  d:650,  h:450,  cost:380, clear:600, wall:true,  zone:'wet'},
   wc:       {label:'Flush toilet',   grp:'Bath',    cls:'c-bath',    w:400,  d:650,  h:450,  cost:90, clear:600, wall:true,  zone:'wet'},
   basin:    {label:'Basin unit',     grp:'Bath',    cls:'c-bath',    w:500,  d:420,  h:900,  cost:70, clear:550, wall:true,  zone:'wet'},
-  washer:   {label:'Washing machine',grp:'Bath',    cls:'c-bath',    w:600,  d:600,  h:850,  cost:190, clear:600, wall:true,  zone:'wet'},
+  washer:   {label:'Washer-dryer',grp:'Bath',    cls:'c-bath',    w:600,  d:600,  h:850,  cost:420, clear:600, wall:true,  zone:'wet'},
   energy:   {label:'Energy cabinet', grp:'Tech',    cls:'c-tech',    w:600,  d:500,  h:2000, cost:90, clear:700, wall:true,  zone:'tech'},
+  tatamibed:{label:'Tatami platform bed, drawers', grp:'Sleep', cls:'c-sleep', w:1600, d:2100, h:400, cost:380, clear:450, wall:true, zone:'bed', store:600, style:'Japanese'},
+  nightstand:{label:'Nightstand',     grp:'Sleep',   cls:'c-store',   w:400,  d:350,  h:500,  cost:35,  clear:300, wall:true,  zone:'night', store:40},
+  oshiire:  {label:'Oshiire futon closet', grp:'Storage', cls:'c-store', w:900, d:800, h:2100, cost:260, clear:700, wall:true, zone:'store', store:1100, style:'Japanese'},
+  jang:     {label:'Jang chest',      grp:'Storage', cls:'c-store',   w:1200, d:500,  h:1100, cost:220, clear:600, wall:true,  zone:'store', store:500, style:'Korean'},
+  getabako: {label:'Shoe cabinet',    grp:'Storage', cls:'c-store',   w:600,  d:350,  h:1800, cost:110, clear:500, wall:true,  zone:'entry', store:300},
+  benchstore:{label:'Storage bench',  grp:'Storage', cls:'c-store',   w:1200, d:450,  h:450,  cost:90,  clear:450, wall:true,  zone:'any', store:180},
+  divider:  {label:'Divider shelving',grp:'Storage', cls:'c-store',   w:1200, d:350,  h:1600, cost:130, clear:400, wall:false, zone:'living', store:300},
+  cleaning: {label:'Cleaning cupboard',grp:'Storage',cls:'c-store',   w:450,  d:450,  h:2000, cost:90,  clear:500, wall:true,  zone:'tech', store:250},
+  pantry:   {label:'Pull-out pantry', grp:'Kitchen', cls:'c-kitchen', w:300,  d:600,  h:2000, cost:140, clear:700, wall:true,  zone:'kitchen', store:280},
+  bins:     {label:'Recycling bins',  grp:'Kitchen', cls:'c-kitchen', w:600,  d:400,  h:600,  cost:40,  clear:400, wall:true,  zone:'kitchen'},
+  kotatsu:  {label:'Kotatsu table, floor chairs', grp:'Living', cls:'c-living', w:1300, d:1300, h:400, cost:200, clear:0, wall:false, zone:'living', style:'Japanese'},
+  soban:    {label:'Folding low table (bapsang)', grp:'Living', cls:'c-living', w:1100, d:1100, h:350, cost:70, clear:0, wall:false, zone:'living', style:'Korean'},
+  ofuro:    {label:'Ofuro soaking tub', grp:'Bath',  cls:'c-bath',    w:1100, d:750,  h:650,  cost:450, clear:600, wall:true,  zone:'wet', style:'Japanese'},
+  nook:     {label:'Fold-down table + storage bench', grp:'Living', cls:'c-living', w:1200, d:450, h:900, cost:180, clear:900, wall:true, zone:'living', store:180},
+  rail:     {label:'Open clothes rail', grp:'Storage', cls:'c-store', w:1000, d:450, h:1800, cost:60, clear:550, wall:true, zone:'store', store:450},
+  cleanrail:{label:'Wall cleaning rack', grp:'Storage', cls:'c-store', w:500, d:150, h:1500, cost:25, clear:400, wall:true, zone:'tech', store:40},
+  overhead: {label:'Overhead cabinet (tenbukuro)', grp:'Storage', cls:'c-store', w:1200, d:350, h:500, cost:120, clear:0, wall:true, zone:'any', overlay:true, high:true, store:210},
+  dryrack:  {label:'Ceiling laundry rack', grp:'Bath', cls:'c-roof', w:1200, d:300, h:0, cost:60, clear:0, wall:false, zone:'any', overlay:true},
   partition:{label:'Inside wall',    grp:'Build',   cls:'c-build',   w:2000, d:100,  h:2450, cost:0,   clear:0,   wall:false, zone:'any', opt:{door:true, dpos:.5, dw:700}},
   skylight: {label:'Roof window',    grp:'Build',   cls:'c-roof',    w:550,  d:1000, h:0,    cost:0,   clear:0,   wall:false, zone:'any', overlay:true},
 };
@@ -108,7 +126,7 @@ function defaultState() {
       right:{on:true, w:1500, inTop:0, inBot:3200, outTop:0, outBot:2200, split:{type:'none', a:1100, b:1100}}},
     openings: [], items: [],
     hints: {bathWing:'left', bedEnd:'top', kitchenIn:'wing', doorAt:'auto'},
-    program: {bed:'bed160', bathing:'shower', toilet:'toilet', kitchen:1800, fridgeTall:false, washer:false,
+    program: {style:'standard', maxStorage:true, pantry:true, getabako:true, cleaning:true, bins:true, dryrack:true, nightstand:true, divider:false, bed:'bed160', bathing:'shower', toilet:'toilet', kitchen:1800, fridgeTall:false, washer:true,
               wardrobe:true, sofa:'sofa', dining:true, desk:false, stove:false, shelf:false, shoe:true},
     spec: {glazing:'double', cladding:'steel', insul:'std', finish:'ply', frame:'light'},
     sys: {pv:1.8, batt:7.5, tank:true, tankL:880, cisternL:2500, grey:true, mvhr:1, heating:'heatpump', heater:'inst', people:2, sun:4, rain:700},
@@ -341,6 +359,10 @@ function validate(geo) {
       opz.forEach(({o, z}) => { if (!z) return; if (z.tall && cat.h <= z.sill + 30) return;
         if (B.polys.some(p => overlap(p, z.poly, 20))) issues.push(OPN[o.type].kind === 'win' ? 'Blocks a window' : 'Blocks a doorway'); });
     }
+    if (cat.high) {
+      bodies.forEach(C => { if (C !== B && CAT[C.it.type].high && overlap(bodyPoly(it), bodyPoly(C.it))) issues.push('Overlaps another overhead cabinet'); });
+      S.openings.forEach(o => { const z = opZones(geo, o); if (z && FLOOR_H + o.sill + o.h > 1850 && overlap(bodyPoly(it), z.poly, 5)) issues.push('Covers a door or window'); });
+    }
     if (BED_TYPES.includes(it.type)) { const d = bedExitDist(it, exitSegments(geo)); if (d < BED_EXIT_MIN) issues.push(`Too close to the exit (${(d / 1000).toFixed(1)} m, keep ${BED_EXIT_MIN / 1000} m clear)`); }
     res.items[it.id] = [...new Set(issues)];
   });
@@ -360,7 +382,7 @@ function validate(geo) {
   if (lim) ck(geo.area <= lim + 1e-4 ? 'ok' : 'bad', geo.area <= lim + 1e-4 ? `Floor area ${geo.area.toFixed(1)} m², within the ${lim} m² limit` : `Floor area ${geo.area.toFixed(1)} m² is over the ${lim} m² limit`);
   else ck('ok', `Floor area ${geo.area.toFixed(1)} m², no limit set`);
   ck(S.openings.some(o => OPN[o.type].kind === 'door') ? 'ok' : 'bad', S.openings.some(o => OPN[o.type].kind === 'door') ? 'Entry door placed' : 'Add an entry door');
-  ck(has('bed160','bed140','bed90','sofabed','wallbed') ? 'ok' : 'bad', has('bed160','bed140','bed90','sofabed','wallbed') ? 'Somewhere to sleep' : 'Add a bed or sofa bed');
+  ck(has('bed160','bed140','bed90','tatamibed','sofabed','wallbed') ? 'ok' : 'bad', has('bed160','bed140','bed90','tatamibed','sofabed','wallbed') ? 'Somewhere to sleep' : 'Add a bed or sofa bed');
   const segs = exitSegments(geo), beds = S.items.filter(i => BED_TYPES.includes(i.type));
   if (beds.length && segs.length) { const d = Math.min(...beds.map(b => bedExitDist(b, segs)));
     ck(d >= BED_EXIT_MIN ? 'ok' : 'bad', d >= BED_EXIT_MIN ? `Bed is ${(d / 1000).toFixed(1)} m from the nearest exit` : `Bed is only ${(d / 1000).toFixed(1)} m from an exit. Keep it at least ${BED_EXIT_MIN / 1000} m away`); }
@@ -378,6 +400,7 @@ function validate(geo) {
   }
   if (S.swapped && S.swapped.length) S.swapped.forEach(t => ck('warn', t));
   if (S.unplaced && S.unplaced.length) { const miss = S.unplaced.filter(t => CAT[t] && !S.items.some(i => i.type === t)); if (miss.length) ck('warn', 'No room found for: ' + miss.map(t => CAT[t].label.toLowerCase()).join(', ') + '. Add them from Furnish, or pick smaller ones.'); }
+  { const r2 = readyForTwo(); const miss = r2.filter(x => !x.ok); ck(miss.length ? 'warn' : 'ok', miss.length ? `Ready for two: ${r2.length - miss.length} of ${r2.length}, missing ${miss.map(x => x.k.toLowerCase()).join(', ')}` : 'Ready for two people, everything a couple needs is in'); }
   const br = bracing(geo);
   ck(br.x >= 2 && br.y >= 2 ? 'ok' : 'bad', `Solid walls for bracing: ${br.x} across, ${br.y} along (need 2 each)`);
   const glass = S.openings.reduce((s, o) => s + (OPN[o.type].glass ? o.w * o.h : 0), 0) / 1e6;
@@ -419,7 +442,7 @@ function bracing(geo) {
 
 /* beds must stay clear of every exit */
 const BED_EXIT_MIN = 1800;
-const BED_TYPES = ['bed160', 'bed140', 'bed90', 'wallbed'];
+const BED_TYPES = ['bed160', 'bed140', 'bed90', 'tatamibed', 'wallbed'];
 function exitSegments(geo, openings) {
   return (openings || S.openings).filter(o => OPN[o.type].kind === 'door' || o.type === 'slide').map(o => { const f = opFrame(geo, o); if (!f) return null;
     return [add(f.a, mul(f.e.n, T)), add(f.b, mul(f.e.n, T))]; }).filter(Boolean);
@@ -476,6 +499,38 @@ function walkCheck(geo, st, R0) {
   return {unreachable};
 }
 
+/* storage and the essentials a couple needs */
+function itemStore(it) { if (it.type === 'kitchen') return Math.round(it.w / 1000 * 350); return CAT[it.type].store || 0; }
+function storageLitres(st) { return ((st || S).items || []).reduce((s, i) => s + (CAT[i.type] ? itemStore(i) : 0), 0) + (((st || S).items || []).some(i => i.type === 'basin') ? 60 : 0); }
+const STORE_TARGET = 2500;
+function readyForTwo(st) {
+  st = st || S; const has = (...t) => st.items.some(i => t.includes(i.type)), count = (...t) => st.items.filter(i => t.includes(i.type)).length;
+  const style = (st.program && st.program.style) || 'standard';
+  const pull = st.items.some(i => i.type === 'kitchen' && i.opt && i.opt.pullout);
+  const L = [
+    {k:'Bed for two', ok:st.items.some(i => ['bed160', 'bed140', 'tatamibed', 'wallbed', 'sofabed'].includes(i.type)), add:style === 'japanese' ? 'tatamibed' : 'bed160'},
+    {k:'Kitchen with sink and hob', ok:has('kitchen'), add:'kitchen'},
+    {k:'Fridge', ok:st.items.some(i => i.type === 'fridge' || (i.type === 'kitchen' && i.opt && i.opt.fridge)), add:'fridge'},
+    {k:'Table for two', ok:has('dining', 'foldtable', 'kotatsu', 'soban', 'desk', 'nook') || pull, add:style === 'japanese' ? 'kotatsu' : style === 'korean' ? 'soban' : 'dining'},
+    {k:'Seats for two', ok:has('sofa', 'sofabed', 'kotatsu', 'soban', 'dining', 'benchstore', 'nook') || pull, add:'nook'},
+    {k:'Toilet', ok:has('toilet', 'wc'), add:'toilet'},
+    {k:'Shower or bath', ok:has('shower', 'bath', 'ofuro'), add:'shower'},
+    {k:'Hand basin', ok:has('basin'), add:'basin'},
+    {k:'Laundry: washer-dryer', ok:has('washer') || st.items.some(i => i.type === 'kitchen' && i.opt && i.opt.washer), add:'washer'},
+    {k:'Drying rack', ok:has('dryrack', 'washer') || st.items.some(i => i.type === 'kitchen' && i.opt && i.opt.washer), add:'dryrack'},
+    {k:'Clothes storage for two', ok:has('wardrobe', 'oshiire', 'jang', 'rail') || (has('bed160', 'bed140', 'tatamibed') && count('overhead') >= 2), add:style === 'japanese' ? 'oshiire' : style === 'korean' ? 'jang' : 'wardrobe'},
+    {k:'Shoe storage', ok:has('getabako', 'shoe', 'benchstore'), add:'getabako'},
+    {k:'Food storage (pantry or kitchen cupboards)', ok:has('pantry') || st.items.some(i => i.type === 'kitchen' && i.w >= 1800), add:'pantry'},
+    {k:'Cleaning storage', ok:has('cleaning', 'cleanrail'), add:'cleaning'},
+    {k:'Recycling bins (under the sink or separate)', ok:has('bins', 'kitchen'), add:'bins'},
+    {k:'Energy cabinet', ok:has('energy'), add:'energy'},
+    {k:'Smoke and CO alarm, fire extinguisher, first aid', ok:true},
+  ];
+  const store = storageLitres(st);
+  L.push({k:`Storage ${store.toLocaleString('en-US')} L of ${STORE_TARGET.toLocaleString('en-US')} L`, ok:store >= STORE_TARGET, add:'storefill'});
+  return L;
+}
+
 /* ======================= COSTS ======================= */
 function money(v) {
   const c = CUR[S.site.cur] || CUR.USD, r = S.site.rate || c.r, val = v * r;
@@ -484,7 +539,7 @@ function money(v) {
 }
 function itemCost(it) {
   const P = S.prices;
-  if (it.type === 'kitchen') return P.kitchen_base + P.kitchen_m * it.w / 1000 + (it.opt && it.opt.fridge ? P.kitchen_fridge : 0);
+  if (it.type === 'kitchen') return P.kitchen_base + P.kitchen_m * it.w / 1000 + (it.opt && it.opt.fridge ? P.kitchen_fridge : 0) + (it.opt && it.opt.washer ? (S.iprices.washer ?? CAT.washer.cost) : 0) + (it.opt && it.opt.pullout ? 120 : 0);
   if (it.type === 'partition') return P.partition_m * it.w / 1000 + (it.opt && it.opt.door ? P.door_int : 0);
   if (it.type === 'skylight') return P.skylight;
   return S.iprices[it.type] ?? CAT[it.type].cost;
@@ -563,6 +618,8 @@ function costs(geo) {
   if (y.heating === 'heatpump') L('Energy and water', 'Heat pump', P.heatpump);
   L('Energy and water', {el:'Water heater 50 L', inst:'Instant water heater', solar:'Solar water heater'}[y.heater], {el:P.heater_el, inst:P.heater_inst, solar:P.heater_solar}[y.heater]);
   // labour
+  L('Fit-out and furniture', 'Smoke and CO alarm, fire extinguisher, first aid kit', 60);
+  if (y.heating === 'ondol') L('Energy and water', `Ondol floor heating, ${A.toFixed(1)} m²`, 180 + A * 25);
   L('Factory labour and services', `Assembly and fit-out, ${A.toFixed(1)} m²`, A * P.labour_m2);
   L('Factory labour and services', 'Electrics and plumbing', A * P.mep_m2);
   // transport
@@ -604,7 +661,8 @@ function offgrid() {
   kwh += .25; // pump
   kwh += y.mvhr * .15;
   if (y.heater === 'el') kwh += 1.6 * y.people / 2; else if (y.heater === 'inst') kwh += 1.4 * y.people / 2; else kwh += .3;
-  const winter = y.heating === 'heatpump' ? 3.2 : 0;
+  const winter = y.heating === 'heatpump' ? 3.2 : y.heating === 'ondol' ? 5.5 : 0;
+  if (it('kotatsu')) kwh += .3;
   const pv = y.pv * y.sun * .8;
   const days = (y.batt * .9) / Math.max(kwh, .1);
   const perPerson = it('bath') ? 85 : 55; const water = y.people * perPerson + 15 + (it('wc') ? y.people * 25 : 0);

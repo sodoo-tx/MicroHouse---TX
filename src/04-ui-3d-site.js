@@ -48,6 +48,8 @@ function renderInspector() {
       h += `<div class="range"><div class="lbl">Sink position <span>${Math.round(it.opt.sink * 100)}%</span></div><input type="range" min="0" max="1" step=".05" value="${it.opt.sink}" data-io="sink" style="grid-column:1/-1"></div>`;
       h += `<div class="range"><div class="lbl">Hob position <span>${Math.round(it.opt.cook * 100)}%</span></div><input type="range" min="0" max="1" step=".05" value="${it.opt.cook}" data-io="cook" style="grid-column:1/-1"></div>`;
       h += `<label class="check"><input type="checkbox" data-io="fridge" ${it.opt.fridge ? 'checked' : ''}> Fridge under the counter</label>`;
+      h += `<label class="check"><input type="checkbox" data-io="pullout" ${it.opt.pullout ? 'checked' : ''}> Pull-out table and two folding stools</label>`;
+      h += `<label class="check"><input type="checkbox" data-io="washer" ${it.opt.washer ? 'checked' : ''}> Washer-dryer under the counter</label>`;
     }
     if (it.type === 'partition') {
       h += `<label class="check"><input type="checkbox" data-io="door" ${it.opt.door ? 'checked' : ''}> Sliding door in this wall</label>`;
@@ -208,13 +210,21 @@ function renderPanel() {
   if (t === 'furnish') {
     const pr = S.program;
     h += `<h2>Furnish</h2><p class="lead">Tell it what you need and it arranges everything. Lock pieces you like, then arrange again.</p>`;
-    h += `<div class="box">`;
+    h += `<div class="field stack"><label>Living style</label>${seg('program.style', [['standard', 'Standard'], ['japanese', 'Japanese'], ['korean', 'Korean']])}</div>`;
+    h += `<p class="note">${({standard:'Bed, wardrobe, sofa and dining table.', japanese:'Tatami platform bed with drawers, oshiire futon closet, kotatsu table with floor chairs, ofuro soaking tub.', korean:'Bed, jang chest, folding low table (bapsang). Try ondol floor heating in Energy and water.'})[pr.style || 'standard']}</p>`;
+    { const r2 = readyForTwo(), ok = r2.filter(x => x.ok).length, st = storageLitres();
+      h += `<h3>Ready for two people <span class="note">${ok} of ${r2.length}</span></h3>`;
+      h += gauge('Storage for two', st, STORE_TARGET, `${st.toLocaleString('en-US')} of ${STORE_TARGET.toLocaleString('en-US')} L`);
+      h += `<ul class="olist ready">${r2.map(x => `<li><span class="rk ${x.ok ? 'ok' : 'no'}">${x.ok ? '✓' : '•'}</span><span class="grow">${esc(x.k)}</span>${!x.ok && x.add ? `<button class="btn small" ${x.add === 'storefill' ? 'data-act="storefill"' : `data-add="${x.add}"`}>${x.add === 'storefill' ? 'Fill walls' : 'Add'}</button>` : ''}</li>`).join('')}</ul>`;
+      if (r2.some(x => !x.ok)) h += `<p><button class="btn primary" data-act="complete2">Add everything missing</button></p>`; }
+    h += `<h3>What to include</h3><div class="box">`;
     h += sel('Bed', 'program.bed', [['bed160', 'Double 160'], ['bed140', 'Bed 140'], ['bed90', 'Single 90'], ['wallbed', 'Wall bed, folds up'], ['none', 'Sofa bed only']]);
     h += sel('Bathing', 'program.bathing', [['shower', 'Shower'], ['bath', 'Bathtub']]);
     h += sel('Toilet', 'program.toilet', [['toilet', 'Dry, no water'], ['wc', 'Flush']]);
     h += sel('Kitchen length', 'program.kitchen', [[1200, '1.2 m compact'], [1800, '1.8 m'], [2400, '2.4 m'], [3000, '3.0 m']]);
     h += sel('Seating', 'program.sofa', [['sofa', 'Sofa'], ['sofabed', 'Sofa bed'], ['none', 'None']]);
-    h += chk('Dining table', 'program.dining') + chk('Desk for work', 'program.desk') + chk('Wardrobe', 'program.wardrobe') + chk('Shelving', 'program.shelf') + chk('Entry bench', 'program.shoe') + chk('Tall fridge', 'program.fridgeTall') + chk('Washing machine', 'program.washer') + chk('Wood stove', 'program.stove');
+    h += chk('Dining or low table', 'program.dining') + chk('Desk for work', 'program.desk') + chk('Wardrobe or closet', 'program.wardrobe') + chk('Shoe cabinet', 'program.getabako') + chk('Pull-out pantry', 'program.pantry') + chk('Recycling bins', 'program.bins') + chk('Cleaning cupboard', 'program.cleaning') + chk('Nightstands', 'program.nightstand') + chk('Divider shelving', 'program.divider') + chk('Extra shelving', 'program.shelf') + chk('Tall fridge-freezer', 'program.fridgeTall') + chk('Washer-dryer', 'program.washer') + chk('Ceiling laundry rack', 'program.dryrack') + chk('Wood stove', 'program.stove');
+    h += chk('Fill spare walls with storage', 'program.maxStorage');
     h += `</div>`;
     h += `<h3>Where things go</h3>`;
     h += `<div class="field stack"><label>Bathroom in</label>${seg('hints.bathWing', [['left', 'Left wing'], ['right', 'Right wing'], ['end', 'Across the end']])}</div>`;
@@ -247,7 +257,8 @@ function renderPanel() {
     h += gauge('Days of stored water', og.wdays, 21, `${og.wdays.toFixed(0)} days, aim for 3 weeks`);
     h += chk('Greywater reed planter', 'sys.grey');
     h += `<h3>Heating and air</h3>`;
-    h += sel('Heating', 'sys.heating', [['heatpump', 'Air-to-air heat pump'], ['none', 'None, or wood stove only']]);
+    h += sel('Heating', 'sys.heating', [['heatpump', 'Air-to-air heat pump'], ['ondol', 'Ondol electric floor heating'], ['none', 'None, or wood stove only']]);
+    if (S.sys.heating === 'ondol') h += `<p class="note">Ondol floor heating is very comfortable but uses about 5.5 kWh a day in winter, more solar and battery than a heat pump.</p>`;
     h += sel('Hot water', 'sys.heater', [['el', 'Electric 50 L'], ['inst', 'Instant, smaller'], ['solar', 'Solar thermal']]);
     h += rng('Fresh-air units with heat recovery', 'sys.mvhr', 0, 4, 1, '');
   }
@@ -358,6 +369,7 @@ function initPanel() {
   panel.addEventListener('change', e => { if (e.target.dataset.bind) onBind(e.target); });
   panel.addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.set === 'program.style') { snapshot(); S.program.style = b.dataset.val; const f = autoArrange('furn'); G.motion = true; commit(true); toast(({standard:'Standard style', japanese:'Japanese style', korean:'Korean style'})[b.dataset.val] + (f.length ? '. No room for: ' + f.map(t => CAT[t] ? CAT[t].label.toLowerCase() : t).join(', ') : ', everything placed')); return; }
     if (b.dataset.set) { snapshot(); set(S, b.dataset.set, b.dataset.set === 'site.north' ? +b.dataset.val : b.dataset.val); if (b.dataset.set.startsWith('shape.')) normShape(); commit(true); return; }
     if (b.dataset.preset) { snapshot(); const th = G.thumbs && G.thumbs[+b.dataset.preset]; let f;
       if (th && th.state) { const st = JSON.parse(JSON.stringify(th.state)); Object.assign(S, st); S.unplaced = []; f = []; } else f = applyPreset(PRESETS[+b.dataset.preset]);
@@ -375,6 +387,8 @@ function initPanel() {
     if (a === 'auto-ops') { snapshot(); autoOpenings(G.geo); commit(true); toast('Doors and windows re-planned'); }
     if (a === 'variants') startVariants();
     if (a === 'fit25') { snapshot(); fit25(); commit(true); }
+    if (a === 'complete2') { snapshot(); completeForTwo(); }
+    if (a === 'storefill') { snapshot(); const n = fillStorage(G.geo); G.motion = true; commit(true); toast(n ? `Added ${n} storage piece${n > 1 ? 's' : ''}` : 'No free wall left for more storage'); }
     if (a === 'mirrorX' || a === 'mirrorY') { snapshot(); mirror(a === 'mirrorX' ? 'x' : 'y'); G.view = null; G.motion = true; commit(true); fitView(); renderPlan(); reset3D(); toast('Flipped'); }
     if (a === 'reset-prices') { snapshot(); const d = defaultState(); S.prices = d.prices; S.iprices = d.iprices; commit(true); toast('Prices reset'); }
   });
@@ -408,7 +422,7 @@ function buildThumbsStep() {
   (window.requestIdleCallback || setTimeout)(buildThumbsStep, {timeout:200});
 }
 /* ======================= BETTER ARRANGEMENTS ======================= */
-const ESS = ['kitchen', 'bed160', 'bed140', 'bed90', 'wallbed', 'energy', 'shower', 'bath', 'toilet', 'wc', 'basin', 'sofabed'];
+const ESS = ['kitchen', 'bed160', 'bed140', 'bed90', 'tatamibed', 'wallbed', 'energy', 'shower', 'bath', 'ofuro', 'toilet', 'wc', 'basin', 'sofabed'];
 function scoreLayout(st, failed) {
   const keepS = S; S = st;
   const g = buildGeo(st.shape), why = [], warn = [];
@@ -479,7 +493,7 @@ function varStep() {
   while (R.i < R.n && performance.now() - t0 < 150) {
     const h = R.combos[R.i++];
     let failed = run(h);
-    if (failed.some(t => ['bed160', 'bed140', 'bed90'].includes(t))) failed = run(h, 'wallbed');
+    if (failed.some(t => ['bed160', 'bed140', 'bed90', 'tatamibed'].includes(t))) failed = run(h, 'wallbed');
     const st = JSON.parse(JSON.stringify(S)), ev = scoreLayout(st, failed);
     const g = buildGeo(st.shape), cell = it => it ? `${Math.round(it.x / 900)},${Math.round(it.y / 900)}` : '-';
     const sig = [h.bathWing, cell(st.items.find(i => CAT[i.type].zone === 'bed')), cell(st.items.find(i => i.type === 'kitchen')), (st.openings.find(o => OPN[o.type].kind === 'door') || {}).edge].join('|');
@@ -507,7 +521,7 @@ function varStep() {
 function badness() {
   const g = buildGeo(S.shape), v = validate(g), has = (...t) => S.items.some(i => t.includes(i.type));
   let n = Object.values(v.items).filter(x => x.length).length + Object.values(v.ops).filter(x => x.length).length;
-  [['bed160', 'bed140', 'bed90', 'wallbed', 'sofabed'], ['kitchen'], ['toilet', 'wc'], ['shower', 'bath'], ['basin']].forEach(t => { if (!has(...t)) n += 10; });
+  [['bed160', 'bed140', 'bed90', 'tatamibed', 'wallbed', 'sofabed'], ['kitchen'], ['toilet', 'wc'], ['shower', 'bath', 'ofuro'], ['basin']].forEach(t => { if (!has(...t)) n += 10; });
   const wk = walkCheck(g); if (wk) n += wk.unreachable.length;
   return n;
 }
@@ -706,6 +720,7 @@ function build3D() {
   }
   // items
   let n3 = 0;
+  S.items.filter(it => it.type === 'overhead').forEach(it => { const t = -it.rot * Math.PI / 180; const me = box(it.w * s, .5, it.d * s, it.x * s, (FLOOR_H + 2150) * s, it.y * s, t, mat(0xD8CBB8)); });
   S.items.forEach(it => { if (CAT[it.type].overlay) return; const g = itemMesh(it, box); g.position.set(it.x * s, FLOOR_H * s, it.y * s); g.rotation.y = -it.rot * Math.PI / 180; root.add(g);
     if (G.motion3D) { const d = n3++ * 45; g.scale.set(.001, .001, .001); anim3D(520, k => { const v = Math.max(.001, k); g.scale.set(v, v, v); }, d, easeBack); } });
   if (G.anim3D === 'frame' || G.anim3D === 'walls') { const kids = root.children.slice(); kids.forEach((c, i) => { if (c.geometry && c.geometry.type === 'BoxGeometry') { const sy = c.scale.y; c.scale.y = .001; anim3D(600, k => c.scale.y = Math.max(.001, k * sy), Math.min(i * 6, 500)); } }); }
@@ -716,7 +731,21 @@ function itemMesh(it, box) {
   const g = new THREE.Group(), w = it.w / 1000, d = it.d / 1000, t = it.type;
   const W = mat(0xF4F3EF), wood = mat(0xC79A63), dark = mat(0x2D3234), fab = mat(0x8EA58C), bed = mat(0xE9E4DA), grey = mat(0xA9AFB0), glass = mat(0xA6D3E2, {transparent:true, opacity:.35});
   const B = (bw, bh, bd, x, y, z, m) => box(bw, bh, bd, x, y, z, 0, m, g);
-  if (t === 'wallbed') { B(w, 2.1, d, 0, 1.05, 0, mat(0xD9C3A2)); B(w - .2, .02, 2.0, 0, .01, d/2 + 1.0, mat(0xCFC6B4, {transparent:true, opacity:.35})); }
+  if (t === 'tatamibed') { B(w, .3, d, 0, .15, 0, wood); B(w - .06, .06, d - .06, 0, .33, 0, mat(0xCBC28A)); B(w - .3, .12, 1.0, 0, .42, .3, bed); B(w - .3, .1, .3, 0, .41, -d/2 + .3, W); }
+  else if (t === 'oshiire') { B(w, 2.1, d, 0, 1.05, 0, mat(0xEDE6D3)); B(w - .04, .03, .02, 0, 1.0, d/2 + .01, mat(0x9B8F72)); }
+  else if (t === 'jang') { B(w, 1.1, d, 0, .55, 0, mat(0x8A5A3C)); B(w, .04, d + .02, 0, 1.12, 0, mat(0x6E4630)); }
+  else if (t === 'getabako' || t === 'pantry' || t === 'cleaning') B(w, CAT[t].h / 1000, d, 0, CAT[t].h / 2000, 0, t === 'pantry' ? W : mat(0xD8CBB4));
+  else if (t === 'nook') { B(w, .45, d, 0, .225, 0, wood); B(w - .1, .06, d - .1, 0, .48, 0, fab); B(w - .2, .7, .03, 0, 1.25, -d/2 + .03, wood); }
+  else if (t === 'rail') { B(.03, 1.8, d, -w/2 + .02, .9, 0, grey); B(.03, 1.8, d, w/2 - .02, .9, 0, grey); B(w, .03, .03, 0, 1.75, 0, grey); B(w - .1, 1.0, d - .1, 0, 1.2, 0, mat(0x9DA6B5)); }
+  else if (t === 'cleanrail') B(w, .9, d, 0, 1.1, 0, grey);
+  else if (t === 'benchstore') { B(w, .42, d, 0, .21, 0, wood); B(w - .1, .06, d - .1, 0, .45, 0, fab); }
+  else if (t === 'divider') { B(.03, 1.6, d, -w/2, .8, 0, wood); B(.03, 1.6, d, w/2, .8, 0, wood); [0, .4, .8, 1.2, 1.6].forEach(y => B(w, .025, d, 0, y + .01, 0, wood)); }
+  else if (t === 'nightstand') B(w, .5, d, 0, .25, 0, wood);
+  else if (t === 'bins') [0, 1, 2].forEach(i => B(w / 3 - .03, .6, d, -w/3 + i * w/3, .3, 0, mat([0x4A7A55, 0x3F6E9E, 0x8A8F92][i])));
+  else if (t === 'kotatsu') { B(.95, .04, .95, 0, .4, 0, wood); B(1.05, .3, 1.05, 0, .22, 0, mat(0xB35848)); [[0, -.68], [0, .68]].forEach(([x, z]) => B(.45, .08, .45, x, .04, z, mat(0xD9C089))); }
+  else if (t === 'soban') { B(.7, .03, .7, 0, .34, 0, wood); [[-.3, -.3], [.3, -.3], [-.3, .3], [.3, .3]].forEach(([x, z]) => B(.03, .33, .03, x, .165, z, wood)); [[0, -.55], [0, .55]].forEach(([x, z]) => B(.42, .06, .42, x, .03, z, mat(0x9DB39A))); }
+  else if (t === 'ofuro') { B(w, .65, d, 0, .325, 0, mat(0xC79A63)); B(w - .12, .02, d - .12, 0, .66, 0, mat(0xBFD9E2)); }
+  else if (t === 'wallbed') { B(w, 2.1, d, 0, 1.05, 0, mat(0xD9C3A2)); B(w - .2, .02, 2.0, 0, .01, d/2 + 1.0, mat(0xCFC6B4, {transparent:true, opacity:.35})); }
   else if (t.startsWith('bed')) { B(w, .3, d, 0, .15, 0, wood); B(w - .04, .22, d - .05, 0, .41, .02, bed); B(w, .5, .06, 0, .55, -d/2 + .03, wood); const n = w > 1.3 ? 2 : 1; for (let i = 0; i < n; i++) B((w - .2) / n - .05, .1, .32, -w/2 + .1 + (i + .5) * (w - .2) / n, .57, -d/2 + .3, W); }
   else if (t === 'sofa' || t === 'sofabed') { B(w, .42, d, 0, .21, 0, fab); B(w, .4, .2, 0, .62, -d/2 + .1, fab); B(.18, .25, d, -w/2 + .09, .54, 0, fab); B(.18, .25, d, w/2 - .09, .54, 0, fab); }
   else if (t === 'dining') { B(w, .04, d - .6, 0, .74, 0, wood); [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b]) => B(.04, .72, .04, a * (w/2 - .05), .36, b * ((d - .6)/2 - .05), wood)); B(.42, .45, .4, 0, .225, -d/2 + .2, grey); B(.42, .45, .4, 0, .225, d/2 - .2, grey); }
@@ -824,6 +853,18 @@ function initCompass() {
   renderCompass();
 }
 
+function completeForTwo() {
+  const miss = readyForTwo().filter(x => !x.ok && x.add && x.add !== 'storefill');
+  const P = S.program;
+  miss.forEach(x => { const a = x.add;
+    if (a === 'washer') P.washer = true; else if (a === 'pantry') P.pantry = true; else if (a === 'getabako') P.getabako = true; else if (a === 'cleaning') P.cleaning = true;
+    else if (a === 'bins') P.bins = true; else if (a === 'dryrack') P.dryrack = true; else if (['wardrobe', 'oshiire', 'jang'].includes(a)) P.wardrobe = true;
+    else if (a === 'fridge') P.fridgeTall = true; else if (['dining', 'kotatsu', 'soban'].includes(a)) P.dining = true; else if (a === 'sofa' && P.sofa === 'none') P.sofa = 'sofa'; });
+  const f = autoArrange('furn'); G.motion = true; commit(true);
+  const still = readyForTwo().filter(x => !x.ok && x.add !== 'storefill');
+  toast(still.length ? 'Added what fits. Still missing: ' + still.map(x => x.k.toLowerCase()).join(', ') : 'Everything a couple needs is in');
+}
+
 /* ======================= SMART MENU ======================= */
 const isPhone = () => matchMedia('(max-width:880px)').matches;
 function switchView(v) {
@@ -839,12 +880,14 @@ function smartSuggestions() {
   const lim = S.site.limit || 0;
   if (lim && geo.area > lim + 1e-4) push('bad', `Shrink to fit ${lim} m²`, `Now ${geo.area.toFixed(1)} m²`, () => { snapshot(); fit25(); G.motion = true; commit(true); });
   const miss = [];
-  if (!has('bed160', 'bed140', 'bed90', 'wallbed', 'sofabed')) miss.push('bed'); if (!has('kitchen')) miss.push('kitchen');
-  if (!has('toilet', 'wc')) miss.push('toilet'); if (!has('shower', 'bath')) miss.push('shower');
+  if (!has('bed160', 'bed140', 'bed90', 'tatamibed', 'wallbed', 'sofabed')) miss.push('bed'); if (!has('kitchen')) miss.push('kitchen');
+  if (!has('toilet', 'wc')) miss.push('toilet'); if (!has('shower', 'bath', 'ofuro')) miss.push('shower');
   if (miss.length) push('bad', 'Add what is missing', miss.join(', '), () => runAuto('furn'));
   if (v.checks.some(c => c.state === 'bad' && /from an exit/.test(c.text))) push('bad', 'Move the bed away from the exit', `Keep at least ${BED_EXIT_MIN / 1000} m clear`, () => runAuto('furn'));
   const nb = Object.values(v.items).filter(a => a.length).length + Object.values(v.ops).filter(a => a.length).length;
   if (nb) push('bad', 'Fix pieces with red outlines', `${nb} overlap or block a door`, () => runAuto('furn'));
+  { const r2 = readyForTwo().filter(x => !x.ok && x.add && x.add !== 'storefill'); if (r2.length) push('warn', 'Complete the home for two', 'Missing: ' + r2.map(x => x.k.toLowerCase()).join(', '), () => { snapshot(); completeForTwo(); }); }
+  if (storageLitres() < STORE_TARGET) push('warn', 'Add more storage', `${storageLitres().toLocaleString('en-US')} L of ${STORE_TARGET.toLocaleString('en-US')} L for two people`, () => { snapshot(); const n = fillStorage(G.geo); G.motion = true; commit(true); toast(n ? `Added ${n} storage piece${n > 1 ? 's' : ''}` : 'No free wall left for more storage'); });
   if (!has('energy')) push('warn', 'Add an energy cabinet', 'For the batteries and inverter', () => addItem('energy'));
   const br = bracing(geo); if (br.x < 2 || br.y < 2) push('warn', 'Keep two solid walls each way', 'The steel bracing needs them', () => goTab('openings'));
   if (v.checks.some(c => /Hard to reach/.test(c.text))) push('warn', 'Clear the walkways', 'Some furniture blocks the path', () => runAuto('furn'));

@@ -45,7 +45,40 @@ function symbol(it) {
   const R = (x, y, ww, hh, cls = 'sym', rx = 0) => `<rect class="${cls}" x="${f1(x)}" y="${f1(y)}" width="${f1(ww)}" height="${f1(hh)}" rx="${rx}"/>`;
   const C = (x, y, r, cls = 'sym') => `<circle class="${cls}" cx="${f1(x)}" cy="${f1(y)}" r="${f1(r)}"/>`;
   const Ln = (a, b, c, e) => `<line class="sym" x1="${f1(a)}" y1="${f1(b)}" x2="${f1(c)}" y2="${f1(e)}"/>`;
-  if (t === 'wallbed') {
+  if (t === 'tatamibed') {
+    s += Ln(x0, y0 + d/2, x0 + w, y0 + d/2) + Ln(0, y0, 0, y0 + d/2) + Ln(0, y0 + d/2, 0, y0 + d - 220);
+    s += R(x0 + 80, y0 + 70, w/2 - 120, 300, 'sym', 50) + R(40, y0 + 70, w/2 - 120, 300, 'sym', 50);
+    s += Ln(x0, y0 + d - 220, x0 + w, y0 + d - 220) + Ln(x0 + w/3, y0 + d - 220, x0 + w/3, y0 + d) + Ln(x0 + 2*w/3, y0 + d - 220, x0 + 2*w/3, y0 + d);
+  } else if (t === 'oshiire') {
+    s += Ln(x0, y0 + d - 40, x0 + w, y0 + d - 40) + Ln(0, y0 + d - 60, 0, y0 + d) + `<line class="sym" x1="${f1(x0 + 60)}" y1="${f1(y0 + d/2)}" x2="${f1(x0 + w - 60)}" y2="${f1(y0 + d/2)}" style="stroke-dasharray:8 6"/>`;
+  } else if (t === 'jang') {
+    for (let i = 1; i < 3; i++) s += Ln(x0 + i * w/3, y0 + 20, x0 + i * w/3, y0 + d);
+    for (let i = 0; i < 3; i++) s += C(x0 + (i + .5) * w/3, y0 + d - 70, 22, 'symf');
+  } else if (t === 'getabako' || t === 'pantry' || t === 'cleaning') {
+    for (let i = 1; i < 4; i++) s += Ln(x0 + 30, y0 + i * d/4, x0 + w - 30, y0 + i * d/4);
+    if (t === 'cleaning') s += Ln(x0 + 60, y0 + d - 60, x0 + w - 60, y0 + 60);
+  } else if (t === 'nook') {
+    s += Ln(x0, y0 + 60, x0 + w, y0 + 60) + `<rect class="sym" x="${f1(x0 + 100)}" y="${f1(y0 + d)}" width="${f1(w - 200)}" height="700" style="stroke-dasharray:10 7"/>`;
+  } else if (t === 'rail') {
+    s += Ln(x0 + 30, 0, x0 + w - 30, 0); for (let i = 0; i < 6; i++) s += Ln(x0 + 120 + i * (w - 240) / 5, -d/2 + 60, x0 + 120 + i * (w - 240) / 5, d/2 - 60);
+  } else if (t === 'cleanrail') {
+    s += Ln(x0 + 60, 0, x0 + w - 60, 0) + C(x0 + 120, 0, 25, 'symf') + C(x0 + w - 120, 0, 25, 'symf');
+  } else if (t === 'benchstore') {
+    s += Ln(x0, y0 + 60, x0 + w, y0 + 60) + C(0, y0 + d - 60, 25, 'symf');
+  } else if (t === 'divider') {
+    for (let i = 1; i < 4; i++) s += Ln(x0 + i * w/4, y0, x0 + i * w/4, y0 + d);
+  } else if (t === 'nightstand') {
+    s += Ln(x0 + 40, y0 + d/2, x0 + w - 40, y0 + d/2) + C(0, y0 + d - 60, 18, 'symf');
+  } else if (t === 'bins') {
+    for (let i = 0; i < 3; i++) s += R(x0 + 20 + i * (w - 40)/3, y0 + 30, (w - 40)/3 - 20, d - 60, 'sym', 20);
+  } else if (t === 'kotatsu' || t === 'soban') {
+    const tw = t === 'kotatsu' ? 800 : 700;
+    s += R(-tw/2, -tw/2, tw, tw, 'sym', t === 'kotatsu' ? 30 : 80);
+    if (t === 'kotatsu') s += R(-tw/2 - 60, -tw/2 - 60, tw + 120, tw + 120, 'sym', 60);
+    const cu = 420, ch = 230; s += R(-cu/2, -tw/2 - 90 - ch, cu, ch, 'sym', 50) + R(-cu/2, tw/2 + 90, cu, ch, 'sym', 50);
+  } else if (t === 'ofuro') {
+    s += R(x0 + 60, y0 + 60, w - 140, d - 120, 'sym', 60) + R(x0 + w - 110, y0 + 120, 70, d - 240, 'sym', 10) + C(x0 + w/2, 0, 30);
+  } else if (t === 'wallbed') {
     s += Ln(x0 + 40, y0 + d - 40, x0 + w - 40, y0 + d - 40) + Ln(x0, y0 + 60, x0 + w, y0 + 60);
   } else if (t.startsWith('bed')) {
     const n = w >= 1300 ? 2 : 1, pw = (w - 160 - (n - 1) * 80) / n;
@@ -70,6 +103,8 @@ function symbol(it) {
     s += R(clamp(sx - 220, x0 + 20, x0 + w - 460), y0 + 90, 440, 380, 'sym', 50) + C(clamp(sx, x0 + 240, x0 + w - 240), y0 + 280, 45);
     const hx = clamp(cx, x0 + 300, x0 + w - 300);
     s += R(hx - 280, y0 + 60, 560, 480, 'sym', 20) + C(hx - 130, y0 + 300, 95) + C(hx + 130, y0 + 300, 95);
+    if (o.pullout) s += `<rect class="sym" x="${f1(x0 + w/2 - 350)}" y="${f1(y0 + d)}" width="700" height="600" style="stroke-dasharray:10 7"/>`;
+    if (o.washer) { const wx = clamp(x0 + w * (sx > 0 ? .5 : .5) - 300, x0 + 10, x0 + w - 610); s += C(wx + 300, y0 + 300, 190) + `<text class="it-label" x="${f1(wx + 300)}" y="${f1(y0 + 340)}" text-anchor="middle">W</text>`; }
     if (o.fridge) { const fx = (sx > 0 ? x0 + 20 : x0 + w - 620); s += R(clamp(fx, x0 + 10, x0 + w - 610), y0 + 30, 590, 520, 'sym', 0) + `<text class="it-label" x="${f1(clamp(fx, x0 + 10, x0 + w - 610) + 295)}" y="${f1(y0 + 330)}" text-anchor="middle">F</text>`; }
   } else if (t === 'fridge') {
     s += R(x0 + 40, y0 + 40, w - 80, d - 80) + `<text class="it-label" x="0" y="40" text-anchor="middle">F</text>`;
@@ -106,6 +141,11 @@ function itemMarkup(it, o) {
       g += `<line class="sym" x1="${f1(cc - dw/2)}" y1="${f1(-it.d/2 - 25)}" x2="${f1(cc + dw/2 - 50)}" y2="${f1(-it.d/2 - 25)}" style="stroke-width:2.4px"/>`;
       g += `<line class="sym" x1="${f1(cc + dw/2 - 50)}" y1="${f1(-it.d/2 - 25)}" x2="${f1(cc + dw/2 + dw - 120)}" y2="${f1(-it.d/2 - 25)}" style="stroke-dasharray:6 5"/>`; }
     g += `<rect x="${f1(-it.w/2)}" y="${f1(-it.d/2 - 60)}" width="${f1(it.w)}" height="${f1(it.d + 120)}" fill="transparent"/>`;
+  } else if (it.type === 'overhead') {
+    g += `<rect class="body c-store" x="${f1(-it.w/2)}" y="${f1(-it.d/2)}" width="${f1(it.w)}" height="${f1(it.d)}" style="fill-opacity:.18; stroke-dasharray:14 8; stroke-opacity:.7"/>`;
+  } else if (it.type === 'dryrack') {
+    g += `<rect class="body" x="${f1(-it.w/2)}" y="${f1(-it.d/2)}" width="${f1(it.w)}" height="${f1(it.d)}" style="fill:none; stroke-dasharray:10 7"/>`;
+    for (let i = -1; i <= 1; i++) g += `<line class="sym" x1="${f1(-it.w/2 + 40)}" y1="${f1(i * it.d / 4)}" x2="${f1(it.w/2 - 40)}" y2="${f1(i * it.d / 4)}" style="stroke-dasharray:6 6"/>`;
   } else if (it.type === 'skylight') {
     g += `<rect class="body" x="${f1(-it.w/2)}" y="${f1(-it.d/2)}" width="${f1(it.w)}" height="${f1(it.d)}" style="fill:var(--glass); fill-opacity:.25; stroke-dasharray:8 5"/>`;
     g += `<line class="sym" x1="${f1(-it.w/2)}" y1="${f1(-it.d/2)}" x2="${f1(it.w/2)}" y2="${f1(it.d/2)}" style="stroke-dasharray:6 5"/>`;
@@ -324,13 +364,18 @@ function pushToWall(it) {
   it.x = Math.round(p[0]); it.y = Math.round(p[1]); it.rot = Math.round(Math.atan2(-best.e.n[0], best.e.n[1]) * 180 / Math.PI * 100) / 100;
 }
 /* find a free spot for a newly added item */
-function findSpot(type, proto) {
-  const geo = G.geo, it = proto ? JSON.parse(JSON.stringify(proto)) : newItem(type);
+function findSpot(type, proto, geoIn) {
+  const geo = geoIn || G.geo || buildGeo(S.shape), it = proto ? JSON.parse(JSON.stringify(proto)) : newItem(type);
   const bodies = S.items.filter(i => !CAT[i.type].overlay && i.id !== it.id).map(i => ({polys:solidPolys(i), clr:clearPoly(i), type:i.type}));
   const blocks = S.openings.map(o => opZones(geo, o)).filter(Boolean);
   const zones = geo.zones, inside = p => zones.some(z => inPoly(p, z.poly));
   const ok = () => {
     const b = bodyPoly(it); if (!insideZones(b, zones)) return false;
+    if (CAT[type].high) {
+      if (S.items.some(i => i.id !== it.id && CAT[i.type] && CAT[i.type].high && overlap(b, bodyPoly(i)))) return false;
+      if (S.openings.some(o => { const z = opZones(geo, o); return z && FLOOR_H + o.sill + o.h > 1850 && overlap(b, z.poly, 5); })) return false;
+      return true;
+    }
     if (CAT[type].overlay) return true;
     const c = clearPoly(it);
     for (const o of bodies) { if (o.polys.some(q => overlap(b, q))) return false; if (o.clr && overlap(b, o.clr, 30)) return false; if (c && o.type !== 'partition' && o.polys.some(q => overlap(c, q, 30))) return false; }
