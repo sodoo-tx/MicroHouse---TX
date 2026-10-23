@@ -170,8 +170,6 @@ function planMarkup(st, geo, o = {}) {
     h += `<text class="dim" x="${f1(p[0])}" y="${f1(p[1])}" text-anchor="middle" dominant-baseline="central" transform="rotate(${f1(ang)} ${f1(p[0])} ${f1(p[1])})">${(e.len/1000).toFixed(2)}</text>`;
   });
   if (!o.mini) {
-    const b = geo.bbox, nx = b[2] + 700, ny = b[1] + 300, n = -(S.site.north || 0);
-    if (!(window.innerWidth < 600)) h += `<g transform="translate(${f1(nx)} ${f1(ny)})"><circle r="300" fill="var(--sheet)" stroke="var(--line)" stroke-width="12"/><g transform="rotate(${n})"><path d="M0 -240 L90 60 L0 10 L-90 60 Z" fill="var(--ink)"/><text y="-280" text-anchor="middle" class="dim" style="font-weight:700; fill:var(--ink)">N</text></g></g>`;
     // module names
     if (G.tab === 'shape') geo.mods.forEach(m => { const c = centroid(m.poly); if (m.key === 'C') return; h += `<text class="it-label" x="${f1(c[0])}" y="${f1(c[1] + 260)}" text-anchor="middle" style="opacity:.55">${(polyArea(m.poly) / 1e6).toFixed(2)} m²</text>`; });
   }
@@ -180,7 +178,7 @@ function planMarkup(st, geo, o = {}) {
 }
 function viewBoxFor(geo, pad) { const b = geo.bbox; return [b[0] - pad, b[1] - pad, b[2] - b[0] + 2*pad, b[3] - b[1] + 2*pad]; }
 function fitView() {
-  const svg = $('#plan'), r = svg.getBoundingClientRect(), vb = viewBoxFor(G.geo, r.width < 600 ? 750 : 1150);
+  const svg = $('#plan'), r = svg.getBoundingClientRect(), vb = viewBoxFor(G.geo, r.width < 600 ? 750 : 950);
   const ar = (r.width || 600) / (r.height || 500);
   let [x, y, w, h] = vb;
   if (w / h < ar) { const nw = h * ar; x -= (nw - w) / 2; w = nw; } else { const nh = w / ar; y -= (nh - h) / 2; h = nh; }
@@ -281,6 +279,8 @@ function initPlanEvents() {
     const mod = e.ctrlKey || e.metaKey;
     if (mod && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
     if (mod && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); return; }
+    if (!mod && (e.key === '+' || e.key === '=')) { zoomPlan(.8); return; }
+    if (!mod && (e.key === '-' || e.key === '_')) { zoomPlan(1.25); return; }
     if (!G.sel) return;
     if (G.sel.kind === 'item') {
       const it = S.items.find(i => i.id === G.sel.id); if (!it) return;
@@ -295,6 +295,10 @@ function initPlanEvents() {
       else if (e.key === 'Escape') select(null);
     }
   });
+}
+function zoomPlan(k) {
+  if (!G.view) return; const v = G.view, cx = v.x + v.w / 2, cy = v.y + v.h / 2, nw = clamp(v.w * k, 2500, 60000), kk = nw / v.w;
+  animateView({x:cx - v.w * kk / 2, y:cy - v.h * kk / 2, w:v.w * kk, h:v.h * kk}, 260);
 }
 function select(sel, rerender = true) { G.sel = sel; if (rerender) renderPlan(); renderInspector(); }
 function removeSel() {

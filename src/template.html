@@ -530,6 +530,24 @@ body.mode-site::before{content:""; position:fixed; inset:0 0 auto; height:env(sa
   .plan-tools::-webkit-scrollbar{display:none}
   .plan-tools .btn{flex:0 0 auto}
 }
+
+/* ---------- zoom + compass ---------- */
+.zoom-ctl{position:absolute; left:10px; bottom:44px; z-index:3; display:flex; flex-direction:column; gap:6px}
+.zoom3{bottom:10px; left:10px}
+.zoom-ctl .btn{width:40px; height:40px; font-size:20px; font-weight:600; background:var(--sheet); box-shadow:var(--shadow); line-height:1}
+.compass{position:absolute; right:12px; top:56px; z-index:3; width:74px; height:84px; border:0; background:transparent; padding:0; cursor:grab; touch-action:none; display:flex; flex-direction:column; align-items:center}
+.compass svg{width:70px; height:70px; filter:drop-shadow(0 3px 8px rgba(0,0,0,.18))}
+.compass.drag{cursor:grabbing}
+.cp-ring{fill:var(--sheet); stroke:var(--line); stroke-width:2}
+.cp-n{fill:var(--warn)} .cp-s{fill:var(--steel)}
+.cp-t{font:800 13px Archivo, Arial, sans-serif; fill:var(--ink)}
+.cp-deg{font-size:11.5px; font-weight:650; color:var(--ink-2); background:var(--sheet); border-radius:8px; padding:0 6px; margin-top:-4px}
+#cpNeedle{transition:transform .25s cubic-bezier(.2,.8,.2,1)} .compass.drag #cpNeedle{transition:none}
+.inspector:not([hidden]) ~ .compass{opacity:0; pointer-events:none}
+.compass{transition:opacity .2s}
+.compass:focus-visible{outline:2px solid var(--act); border-radius:50%}
+@media (max-width:880px){ .zoom-ctl{bottom:84px} .zoom3{bottom:14px} .compass{top:60px; right:8px; width:64px; height:74px} .compass svg{width:60px; height:60px} }
+@media (max-width:480px){ .compass{top:62px} }
 </style>
 </head>
 <body class="mode-site">
@@ -663,6 +681,8 @@ body.mode-site::before{content:""; position:fixed; inset:0 0 auto; height:env(sa
     </div>
     <svg id="plan" xmlns="http://www.w3.org/2000/svg" aria-label="Floor plan editor"></svg>
     <div class="inspector" id="inspector" hidden></div>
+    <div class="zoom-ctl" role="group" aria-label="Zoom the plan"><button class="btn icon-btn" id="zIn" aria-label="Zoom in" title="Zoom in (+)">+</button><button class="btn icon-btn" id="zOut" aria-label="Zoom out" title="Zoom out (−)">−</button></div>
+    <button class="compass" id="compass" aria-label="North direction. Drag to turn, tap to turn 45 degrees" title="Drag to set north, tap to turn 45°"><svg viewBox="-50 -50 100 100" aria-hidden="true"><circle r="46" class="cp-ring"/><g class="cp-ticks"></g><g id="cpNeedle"><path d="M0 -36 L11 4 L0 -3 L-11 4 Z" class="cp-n"/><path d="M0 36 L11 -4 L0 3 L-11 -4 Z" class="cp-s"/><text y="-22" text-anchor="middle" class="cp-t">N</text></g></svg><span class="cp-deg" id="cpDeg">0°</span></button>
     <button class="fab" id="smartBtn" aria-label="Open the smart menu" title="Smart menu (Ctrl+K)"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/><circle cx="12" cy="12" r="2.5"/></svg><span>Menu</span><b class="fab-badge" id="smartBadge" hidden></b></button>
     <div class="plan-hint" id="planHint">Drag furniture, doors and windows. Drag empty space to pan, scroll to zoom. R rotates, Delete removes.</div>
   </section>
@@ -676,6 +696,7 @@ body.mode-site::before{content:""; position:fixed; inset:0 0 auto; height:env(sa
         <button class="btn small" id="topBtn">Top view</button>
         <button class="btn small" id="resetBtn">Reset</button>
       </div>
+      <div class="zoom-ctl zoom3" role="group" aria-label="Zoom the 3D view"><button class="btn icon-btn" id="z3In" aria-label="Zoom in 3D">+</button><button class="btn icon-btn" id="z3Out" aria-label="Zoom out 3D">−</button></div>
       <div class="v3-msg" id="v3msg" hidden></div>
     </div>
     <div class="costs" id="costs"></div>

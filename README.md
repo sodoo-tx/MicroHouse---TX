@@ -9,7 +9,8 @@ It is a single static page. There is no server, no database and no sign-up. Desi
 - **Landing page** with an animated hero, a factory-to-site assembly animation, the signature homes, features, specifications and questions.
 - **Designer** where people pick a plan, change the shape, move doors, windows and furniture, and see the 3D model and price update.
 - **Auto-arrange and arrangement search** that place furniture with clear walkways, short pipe runs and beds kept at least 1.8 m from any exit.
-- **Off-grid sizing** for solar, battery and rainwater storage.
+- **Off-grid sizing** for solar, battery and rainwater storage, with a draggable compass to set north and check the sun.
+- **Zoom** buttons for the plan and 3D view, plus the + and − keys.
 - **Cost estimate** with every line, cost-saving ideas and a lowest-price button. All prices are editable.
 - **Quote request** by email, download or a form service.
 - Works on phones, tablets and desktops, in light and dark mode.

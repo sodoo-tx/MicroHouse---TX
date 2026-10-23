@@ -10,7 +10,7 @@ function commit(panelToo) {
   G.geo = buildGeo(S.shape);
   G.val = validate(G.geo);
   if (G.sel && ((G.sel.kind === 'item' && !S.items.some(i => i.id === G.sel.id)) || (G.sel.kind === 'op' && !S.openings.some(o => o.id === G.sel.id)))) G.sel = null;
-  renderPlan(); renderInspector(); renderHeader(); renderCosts(); updateBadge();
+  renderPlan(); renderInspector(); renderHeader(); renderCosts(); updateBadge(); renderCompass();
   if (panelToo || ['openings', 'furnish'].includes(G.tab)) renderPanel();
   clearTimeout(t3d); t3d = setTimeout(build3D, 90);
   clearTimeout(tSave); tSave = setTimeout(() => { try { localStorage.setItem('mhb-current', JSON.stringify(S)); } catch (e) {} }, 400);
@@ -188,7 +188,9 @@ function renderPanel() {
     });
     h += `<button class="btn primary" data-act="auto-all">Re-plan inside for this shape</button>`;
     h += `<h3>Sun and orientation</h3><p class="note">Point the big glass toward the sun for free winter heat and better solar panels.</p>`;
-    h += sel('Top of the plan faces', 'site.north', [[0, 'North'], [45, 'North-east'], [90, 'East'], [135, 'South-east'], [180, 'South'], [225, 'South-west'], [270, 'West'], [315, 'North-west']]);
+    h += rng('Turn from north', 'site.north', 0, 355, 5, '°', v => `${v}°, plan top faces ${DIRS[Math.round(((v % 360) + 360) % 360 / 45) % 8]}`);
+    h += `<div class="field stack"><label>Quick set: plan top faces</label><div class="seg">${[[0, 'N'], [90, 'E'], [180, 'S'], [270, 'W']].map(([v, l]) => `<button data-set="site.north" data-val="${v}" aria-pressed="${+S.site.north === v}">${l}</button>`).join('')}</div></div>`;
+    h += `<p class="note">You can also drag the compass on the plan, or tap it to turn 45°.</p>`;
     h += `<div class="field stack"><label>Site is in the</label>${seg('site.hemi', [['N', 'North half'], ['S', 'South half']])}</div>`;
     h += `<h3>Modules for transport</h3><ul class="olist">${G.geo.mods.map(m => { const xs = m.poly.map(p => p[0]), ys = m.poly.map(p => p[1]); const a = Math.max(...xs) - Math.min(...xs), b = Math.max(...ys) - Math.min(...ys);
       return `<li><span class="grow">${esc(m.name)}</span><span>${(Math.max(a, b)/1000).toFixed(2)} × ${(Math.min(a, b)/1000).toFixed(2)} m, ${(polyArea(m.poly)/1e6).toFixed(2)} m²</span></li>`; }).join('')}</ul>`;
@@ -356,7 +358,7 @@ function initPanel() {
   panel.addEventListener('change', e => { if (e.target.dataset.bind) onBind(e.target); });
   panel.addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
-    if (b.dataset.set) { snapshot(); set(S, b.dataset.set, b.dataset.val); if (b.dataset.set.startsWith('shape.')) normShape(); commit(true); return; }
+    if (b.dataset.set) { snapshot(); set(S, b.dataset.set, b.dataset.set === 'site.north' ? +b.dataset.val : b.dataset.val); if (b.dataset.set.startsWith('shape.')) normShape(); commit(true); return; }
     if (b.dataset.preset) { snapshot(); const th = G.thumbs && G.thumbs[+b.dataset.preset]; let f;
       if (th && th.state) { const st = JSON.parse(JSON.stringify(th.state)); Object.assign(S, st); S.unplaced = []; f = []; } else f = applyPreset(PRESETS[+b.dataset.preset]);
       G.sel = null; G.variants = null; G.motion = true; commit(true); const tv = G.view; G.view = null; fitView(); const to = G.view; G.view = tv; animateView(to); reset3D(); if (isPhone()) setTimeout(() => switchView('plan'), 30); const lim = S.site.limit || 0; toast(lim && G.geo.area > lim + 1e-4 ? `This one is ${G.geo.area.toFixed(1)} m², over your ${lim} m² limit. Change the limit in Shape.` : f.length ? 'Some items did not fit: ' + f.map(t => CAT[t] ? CAT[t].label.toLowerCase() : t).join(', ') : 'Layout applied'); return; }
@@ -632,6 +634,12 @@ function build3D() {
   // ground
   const cxm = (geo.bbox[0]+geo.bbox[2])/2000, czm = (geo.bbox[1]+geo.bbox[3])/2000;
   const gnd = new THREE.Mesh(new THREE.CircleGeometry(9, 64), mat(dark ? 0x26302C : 0xC9D1C6)); gnd.rotation.x = -Math.PI / 2; gnd.position.set(cxm, -.5, czm); root.add(gnd);
+  { const nv = (() => { const n = (S.site.north || 0) * Math.PI / 180; return [-Math.sin(n), -Math.cos(n)]; })();
+    const rad = Math.max(geo.bbox[2] - geo.bbox[0], geo.bbox[3] - geo.bbox[1]) / 2000 + 1.4;
+    const shp = new THREE.Shape([new THREE.Vector2(0, .55), new THREE.Vector2(.28, -.25), new THREE.Vector2(0, -.08), new THREE.Vector2(-.28, -.25)]);
+    const ar = new THREE.Mesh(new THREE.ShapeGeometry(shp), mat(0xB4412C, {side:THREE.DoubleSide}));
+    ar.rotation.x = -Math.PI / 2; ar.rotation.z = Math.atan2(-nv[0], -nv[1]);
+    ar.position.set(cxm + nv[0] * rad, -.47, czm + nv[1] * rad); root.add(ar); }
   const sh = new THREE.Mesh(new THREE.PlaneGeometry((geo.bbox[2]-geo.bbox[0])/1000 + 1.2, (geo.bbox[3]-geo.bbox[1])/1000 + 1.2), mat(0x000000, {transparent:true, opacity:dark ? .35 : .14})); sh.rotation.x = -Math.PI / 2; sh.position.set(cxm, -.49, czm); root.add(sh);
   const extrude = (poly, depth, y, m) => { const sh = new THREE.Shape(poly.map(p => new THREE.Vector2(p[0] * s, p[1] * s))); const g = new THREE.ExtrudeGeometry(sh, {depth, bevelEnabled:false}); g.rotateX(Math.PI / 2); const me = new THREE.Mesh(g, m); me.position.y = y; root.add(me); return me; };
   // piles + floors
@@ -774,6 +782,8 @@ function openHelp() {
     <span class="kbd">Del</span><span>Remove the selected piece</span>
     <span class="kbd">Ctrl D</span><span>Duplicate the selected piece</span>
     <span class="kbd">Ctrl Z</span><span>Undo, Ctrl Y redo</span>
+    <span class="kbd">+ −</span><span>Zoom the plan in and out, or use the + and − buttons</span>
+    <span class="kbd">Compass</span><span>Drag it to set north, tap to turn 45°. With Shift it snaps to 15°</span>
     <span class="kbd">Wheel</span><span>Zoom the plan or 3D view. Drag empty space to pan. Shift-drag pans in 3D</span>
   </div><p class="note" style="margin-top:12px">Lock a piece in its panel to keep it in place when you auto-arrange. Red outlines mean something overlaps or blocks a door, the Checks list says what.</p>
   <p><button class="btn primary" data-d="close">Got it</button></p>`;
@@ -782,6 +792,37 @@ function openHelp() {
 function migrate(st) { const d = defaultState(); const out = Object.assign(d, st);
   if (st.shape) { const L = st.shape.L || 5400; out.shape = Object.assign(defaultState().shape, st.shape); out.shape.left = convWing(Object.assign({}, st.shape.left), L); out.shape.right = convWing(Object.assign({}, st.shape.right), L); } ['hints', 'program', 'spec', 'sys', 'site'].forEach(k => out[k] = Object.assign(defaultState()[k], st[k] || {})); out.prices = Object.assign(d.prices, st.prices || {}); out.iprices = Object.assign(defaultState().iprices, st.iprices || {});
   if (st.pv !== 2) { const f = defaultState(); out.prices = f.prices; out.iprices = f.iprices; out.spec = Object.assign({}, out.spec, {frame:'light', cladding:'steel', finish:'ply'}); out.pv = 2; } out.items = (st.items || []).filter(i => CAT[i.type]); out.openings = (st.openings || []).filter(o => OPN[o.type]); return out; }
+
+/* ======================= COMPASS ======================= */
+function renderCompass() {
+  const n = ((+S.site.north || 0) % 360 + 360) % 360, nd = $('#cpNeedle'), dg = $('#cpDeg');
+  if (nd) nd.setAttribute('transform', `rotate(${-n})`);
+  if (dg) dg.textContent = `${n}°`;
+  const c = $('#compass'); if (c) c.setAttribute('aria-valuenow', n);
+}
+function setNorth(v, live) {
+  S.site.north = ((Math.round(v) % 360) + 360) % 360; renderCompass();
+  if (live) { if (V3.ok) build3D(); return; }
+  commit(G.tab === 'shape');
+}
+function initCompass() {
+  const c = $('#compass'); if (!c) return;
+  const ticks = c.querySelector('.cp-ticks'); if (ticks) ticks.innerHTML = [...Array(12)].map((_, k) => `<line x1="0" y1="-46" x2="0" y2="${k % 3 ? -41 : -38}" stroke="var(--steel)" stroke-width="${k % 3 ? 1.5 : 2.5}" transform="rotate(${k * 30})"/>`).join('');
+  let st = null;
+  const ang = e => { const r = c.querySelector('svg').getBoundingClientRect(), x = e.clientX - (r.left + r.width / 2), y = e.clientY - (r.top + r.height / 2); return Math.atan2(x, -y) * 180 / Math.PI; };
+  c.addEventListener('pointerdown', e => { e.preventDefault(); c.setPointerCapture(e.pointerId); st = {x:e.clientX, y:e.clientY, moved:false, before:JSON.stringify(S)}; });
+  c.addEventListener('pointermove', e => { if (!st) return;
+    if (!st.moved && Math.hypot(e.clientX - st.x, e.clientY - st.y) < 6) return;
+    st.moved = true; c.classList.add('drag');
+    let a = -ang(e); const snap = e.shiftKey ? 15 : 5; setNorth(Math.round(a / snap) * snap, true); });
+  const up = e => { if (!st) return; c.classList.remove('drag');
+    if (st.moved) { G.hist.push(st.before); G.fut = []; setNorth(S.site.north); toast(`Plan top now faces ${DIRS[Math.round(S.site.north / 45) % 8]}`); }
+    else { snapshot(); setNorth(Math.floor((+S.site.north || 0) / 45) * 45 + 45); }
+    st = null; };
+  c.addEventListener('pointerup', up); c.addEventListener('pointercancel', up);
+  c.addEventListener('keydown', e => { if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); snapshot(); setNorth((+S.site.north || 0) + (e.key === 'ArrowRight' ? -5 : 5)); } });
+  renderCompass();
+}
 
 /* ======================= SMART MENU ======================= */
 const isPhone = () => matchMedia('(max-width:880px)').matches;
@@ -826,6 +867,8 @@ function smartCommands() {
   add('Actions', 'Arrange furniture', 'Keeps doors and windows', () => runAuto('furn'), 'auto arrange place');
   add('Actions', 'Re-plan everything', 'Doors, windows and furniture', () => runAuto('all'), 'auto reset');
   add('Actions', 'Find better arrangements', null, () => { goTab('layouts'); startVariants(); }, 'variants options layout');
+  add('Actions', 'Zoom in', null, () => zoomPlan(.8), 'bigger closer plus'); add('Actions', 'Zoom out', null, () => zoomPlan(1.25), 'smaller minus');
+  add('Actions', 'Turn north 45°', null, () => { snapshot(); setNorth((+S.site.north || 0) + 45); }, 'compass rotate orientation sun');
   add('Actions', 'Fit plan to screen', null, () => { if (isPhone()) switchView('plan'); const tv = G.view; fitView(); const to = G.view; G.view = tv; animateView(to); }, 'zoom');
   add('Actions', 'Undo', null, undo, '', 'Ctrl Z'); add('Actions', 'Redo', null, redo, '', 'Ctrl Y');
   add('Actions', 'Flip left and right', null, () => { snapshot(); mirror('x'); G.view = null; G.motion = true; commit(true); fitView(); renderPlan(); reset3D(); }, 'mirror');
@@ -1287,7 +1330,7 @@ function init() {
   try { const c = localStorage.getItem('mhb-current'); if (c) { S = migrate(JSON.parse(c)); restored = true; } } catch (e) {}
   if (!restored) { const c = loadThumbCache(); if (c && c[0] && c[0].state) Object.assign(S, JSON.parse(JSON.stringify(c[0].state))); else applyPreset(PRESETS[0]); }
   G.geo = buildGeo(S.shape);
-  renderRail(); initPanel(); initInspector(); initCosts(); initDialog(); initPlanEvents(); initSmart();
+  renderRail(); initPanel(); initInspector(); initCosts(); initDialog(); initPlanEvents(); initSmart(); initCompass();
   initSite();
   G.motion = true; G.intro = true; $('#plan').classList.add('intro'); setTimeout(() => $('#plan').classList.remove('intro'), 1600);
   commit(true); reset3D(true);
@@ -1301,7 +1344,10 @@ function init() {
   $('#roofBtn').onclick = e => { G.roof = !G.roof; e.currentTarget.setAttribute('aria-pressed', G.roof); G.anim3D = G.roof ? 'roof' : null; build3D(); };
   $('#frameBtn').onclick = e => { G.frame = !G.frame; e.currentTarget.setAttribute('aria-pressed', G.frame); G.anim3D = G.frame ? 'frame' : 'walls'; build3D(); };
   $('#topBtn').onclick = () => { if (!V3.ok) return; camTo({th:V3.orb.th, ph:.13, r:V3.orb.r, tgt:V3.orb.tgt.clone()}); };
-  $('#resetBtn').onclick = reset3D;
+  $('#resetBtn').onclick = () => reset3D();
+  $('#zIn').onclick = () => zoomPlan(.8); $('#zOut').onclick = () => zoomPlan(1.25);
+  const z3 = k => { if (!V3.ok) return; camTo({th:V3.orb.th, ph:V3.orb.ph, r:clamp(V3.orb.r * k, 3, 40), tgt:V3.orb.tgt.clone()}); };
+  $('#z3In').onclick = () => z3(.8); $('#z3Out').onclick = () => z3(1.25);
   $('#undoBtn').onclick = undo; $('#redoBtn').onclick = redo;
   $('#saveBtn').onclick = openDesigns;
   $('#themeBtn').onclick = () => { const r = document.documentElement; const dark = r.dataset.theme ? r.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches; r.dataset.theme = dark ? 'light' : 'dark'; try { localStorage.setItem('mhb-theme', r.dataset.theme); } catch (e) {} build3D(); };
