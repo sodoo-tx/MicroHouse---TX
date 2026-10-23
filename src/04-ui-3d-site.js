@@ -1000,7 +1000,13 @@ async function sendQuote(e) {
   try { localStorage.setItem('mhb-contact', JSON.stringify({name:q.name, email:q.email, phone:q.phone, where:q.where})); } catch (er) {}
   const text = summaryText(q);
   let sent = false;
-  if (BRAND.quoteEndpoint) { try { const r = await fetch(BRAND.quoteEndpoint, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({request:q, design:S, summary:text})}); sent = r.ok; } catch (er) {} }
+  if (BRAND.quoteEndpoint) {
+    const sm = designSummary();
+    const payload = {_subject:`Quote request ${q.ref} from ${q.name}`, _replyto:q.email, _template:'table', _captcha:'false',
+      name:q.name, email:q.email, phone:q.phone || '-', building_in:q.where, timeline:q.when, use:q.use, notes:q.notes || '-', reference:q.ref,
+      floor_area:`${sm.area.toFixed(1)} m²`, estimated_price:money(sm.total), modules:sm.modules.join('; '), full_request:text};
+    try { const r = await fetch(BRAND.quoteEndpoint, {method:'POST', headers:{'Content-Type':'application/json', 'Accept':'application/json'}, body:JSON.stringify(payload)}); sent = r.ok; } catch (er) {}
+  }
   const d = $('#dlg');
   d.innerHTML = `<div class="qdone"><div class="tick">✓</div><h3>${sent ? 'Request sent' : 'Your request is ready'}</h3><p class="note">Reference <b>${q.ref}</b>. ${sent ? 'We will reply by email, usually within two working days.' : 'Send it to us using one of these.'}</p></div>
     <div style="display:grid; gap:8px">${!sent && BRAND.email ? `<a class="btn primary" style="text-align:center; text-decoration:none" href="mailto:${encodeURIComponent(BRAND.email)}?subject=${encodeURIComponent('Quote request ' + q.ref)}&body=${encodeURIComponent(text.slice(0, 1800) + (text.length > 1800 ? '\n\n(Full design file attached separately)' : ''))}">Email the request</a>` : ''}
