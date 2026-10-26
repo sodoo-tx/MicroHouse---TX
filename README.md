@@ -6,6 +6,8 @@ It is a single static page. There is no server, no database and no sign-up. Desi
 
 ## What it does
 
+- **Main design: accessible two-module home.** A 16.5 m² module (3.0 × 5.5 m) and an 8.4 m² module (2.0 × 4.2 m), 24.9 m² in total. Wheelchair-ready: 1 m doors, 80 cm paths, 1.5 m turning circles, roll-in shower, grab bars, ramp or platform lift. Bigger combinations of the same two modules up to 41.4 m², and all earlier layouts, are kept as options.
+
 - **Landing page** with an animated hero, a factory-to-site assembly animation, the signature homes, features, specifications and questions.
 - **Designer** where people pick a plan, change the shape, move doors, windows and furniture, and see the 3D model and price update.
 - **Auto-arrange and arrangement search** that place furniture with clear walkways, short pipe runs and beds kept at least 1.8 m from any exit.

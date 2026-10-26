@@ -39,6 +39,7 @@ const CAT = {
   oshiire:  {label:'Oshiire futon closet', grp:'Storage', cls:'c-store', w:900, d:800, h:2100, cost:260, clear:700, wall:true, zone:'store', store:1100, style:'Japanese'},
   jang:     {label:'Jang chest',      grp:'Storage', cls:'c-store',   w:1200, d:500,  h:1100, cost:220, clear:600, wall:true,  zone:'store', store:500, style:'Korean'},
   getabako: {label:'Shoe cabinet',    grp:'Storage', cls:'c-store',   w:600,  d:350,  h:1800, cost:110, clear:500, wall:true,  zone:'entry', store:300},
+  shoeslim: {label:'Slim tip-out shoe cabinet', grp:'Storage', cls:'c-store', w:800, d:170, h:1100, cost:70, clear:350, wall:true, zone:'entry', store:110},
   benchstore:{label:'Storage bench',  grp:'Storage', cls:'c-store',   w:1200, d:450,  h:450,  cost:90,  clear:450, wall:true,  zone:'any', store:180},
   divider:  {label:'Divider shelving',grp:'Storage', cls:'c-store',   w:1200, d:350,  h:1600, cost:130, clear:400, wall:false, zone:'living', store:300},
   cleaning: {label:'Cleaning cupboard',grp:'Storage',cls:'c-store',   w:450,  d:450,  h:2000, cost:90,  clear:500, wall:true,  zone:'tech', store:250},
@@ -50,6 +51,9 @@ const CAT = {
   nook:     {label:'Fold-down table + storage bench', grp:'Living', cls:'c-living', w:1200, d:450, h:900, cost:180, clear:900, wall:true, zone:'living', store:180},
   rail:     {label:'Open clothes rail', grp:'Storage', cls:'c-store', w:1000, d:450, h:1800, cost:60, clear:550, wall:true, zone:'store', store:450},
   cleanrail:{label:'Wall cleaning rack', grp:'Storage', cls:'c-store', w:500, d:150, h:1500, cost:25, clear:400, wall:true, zone:'tech', store:40},
+  accshower:{label:'Roll-in shower, level floor', grp:'Bath', cls:'c-bath', w:1100, d:1100, h:2000, cost:520, clear:0, wall:true, zone:'wet', passable:true},
+  acctoilet:{label:'Accessible toilet, grab bars', grp:'Bath', cls:'c-bath', w:750, d:700, h:450, cost:980, clear:900, wall:true, zone:'wet'},
+  accbasin: {label:'Wall-hung basin, knee space', grp:'Bath', cls:'c-bath', w:600, d:450, h:850, cost:160, clear:800, wall:true, zone:'wet'},
   overhead: {label:'Overhead cabinet (tenbukuro)', grp:'Storage', cls:'c-store', w:1200, d:350, h:500, cost:120, clear:0, wall:true, zone:'any', overlay:true, high:true, store:210},
   dryrack:  {label:'Ceiling laundry rack', grp:'Bath', cls:'c-roof', w:1200, d:300, h:0, cost:60, clear:0, wall:false, zone:'any', overlay:true},
   partition:{label:'Inside wall',    grp:'Build',   cls:'c-build',   w:2000, d:100,  h:2450, cost:0,   clear:0,   wall:false, zone:'any', opt:{door:true, dpos:.5, dw:700}},
@@ -57,6 +61,7 @@ const CAT = {
 };
 const OPN = {
   door:      {label:'Entry door',        kind:'door',  w:900,  h:2100, sill:0},
+  door_wide: {label:'Wide door, level threshold', kind:'door', w:1000, h:2100, sill:0},
   door_glass:{label:'Glazed door',       kind:'door',  w:900,  h:2100, sill:0, glass:true},
   slide:     {label:'Sliding glass door',kind:'slide', w:2000, h:2200, sill:0, glass:true},
   win_s:     {label:'Small window',      kind:'win',   w:600,  h:600,  sill:1500, glass:true},
@@ -82,6 +87,9 @@ const PRICE_DEF = {
   fin_ply:         {v:4,    l:'Floor finish, oiled plywood, per m²'},
   ceiling:         {v:7,   l:'Ceiling board, painted, per m²'},
   door_ext:        {v:220,  l:'Insulated entry door'},
+  door_wide:       {v:300,  l:'Wide entry door 1000 mm, level threshold'},
+  ramp_m:          {v:320,  l:'Aluminium access ramp with rails, per metre'},
+  lift:            {v:4200, l:'Platform lift for a wheelchair'},
   door_glass:      {v:380,  l:'Glazed entry door'},
   slide_dbl:       {v:650, l:'Sliding glass door 2 m, double glazed'},
   slide_tri:       {v:950, l:'Sliding glass door 2 m, triple glazed'},
@@ -126,11 +134,11 @@ function defaultState() {
       right:{on:true, w:1500, inTop:0, inBot:3200, outTop:0, outBot:2200, split:{type:'none', a:1100, b:1100}}},
     openings: [], items: [],
     hints: {bathWing:'left', bedEnd:'top', kitchenIn:'wing', doorAt:'auto'},
-    program: {style:'standard', maxStorage:true, pantry:true, getabako:true, cleaning:true, bins:true, dryrack:true, nightstand:true, divider:false, bed:'bed160', bathing:'shower', toilet:'toilet', kitchen:1800, fridgeTall:false, washer:true,
+    program: {access:false, secondExit:false, style:'standard', maxStorage:true, pantry:true, getabako:true, cleaning:true, bins:true, dryrack:true, nightstand:true, divider:false, bed:'bed160', bathing:'shower', toilet:'toilet', kitchen:1800, fridgeTall:false, washer:true,
               wardrobe:true, sofa:'sofa', dining:true, desk:false, stove:false, shelf:false, shoe:true},
     spec: {glazing:'double', cladding:'steel', insul:'std', finish:'ply', frame:'light'},
     sys: {pv:1.8, batt:7.5, tank:true, tankL:880, cisternL:2500, grey:true, mvhr:1, heating:'heatpump', heater:'inst', people:2, sun:4, rain:700},
-    site: {km:150, cur:'USD', rate:null, limit:25, north:180, hemi:'N'},
+    site: {km:150, cur:'USD', rate:null, limit:25, north:180, hemi:'N', entry:'steps', rise:740},
     prices: p, iprices: ip,
   };
 }
@@ -387,9 +395,9 @@ function validate(geo) {
   if (beds.length && segs.length) { const d = Math.min(...beds.map(b => bedExitDist(b, segs)));
     ck(d >= BED_EXIT_MIN ? 'ok' : 'bad', d >= BED_EXIT_MIN ? `Bed is ${(d / 1000).toFixed(1)} m from the nearest exit` : `Bed is only ${(d / 1000).toFixed(1)} m from an exit. Keep it at least ${BED_EXIT_MIN / 1000} m away`); }
   ck(has('kitchen') ? 'ok' : 'bad', has('kitchen') ? 'Kitchen with sink and hob' : 'Add a kitchen run');
-  ck(has('toilet','wc') ? 'ok' : 'bad', has('toilet','wc') ? 'Toilet' : 'Add a toilet');
-  ck(has('shower','bath') ? 'ok' : 'bad', has('shower','bath') ? 'Shower or bath' : 'Add a shower or bath');
-  ck(has('basin') || has('kitchen') ? 'ok' : 'warn', has('basin') ? 'Hand basin' : 'No hand basin, kitchen sink will be used');
+  ck(has('toilet','wc','acctoilet') ? 'ok' : 'bad', has('toilet','wc','acctoilet') ? 'Toilet' : 'Add a toilet');
+  ck(has('shower','bath','ofuro','accshower') ? 'ok' : 'bad', has('shower','bath','ofuro','accshower') ? 'Shower or bath' : 'Add a shower or bath');
+  ck(has('basin','accbasin') || has('kitchen') ? 'ok' : 'warn', has('basin','accbasin') ? 'Hand basin' : 'No hand basin, kitchen sink will be used');
   ck(has('energy') ? 'ok' : 'warn', has('energy') ? 'Energy cabinet for batteries' : 'Add an energy cabinet for batteries and inverter');
   const wet = S.items.filter(i => CAT[i.type].zone === 'wet');
   if (wet.length) {
@@ -399,8 +407,22 @@ function validate(geo) {
     ck(wetMods.size <= 1 || (S.hints.bathWing === 'end' && wetMods.size <= 2) ? 'ok' : 'warn', wetMods.size <= 1 || (S.hints.bathWing === 'end' && wetMods.size <= 2) ? 'Wet fittings grouped together, short pipes' : 'Wet fittings spread over modules, longer pipes');
   }
   if (S.swapped && S.swapped.length) S.swapped.forEach(t => ck('warn', t));
-  if (S.unplaced && S.unplaced.length) { const miss = S.unplaced.filter(t => CAT[t] && !S.items.some(i => i.type === t)); if (miss.length) ck('warn', 'No room found for: ' + miss.map(t => CAT[t].label.toLowerCase()).join(', ') + '. Add them from Furnish, or pick smaller ones.'); }
+  if (S.unplaced && S.unplaced.length) { const needOf = {getabako:'Shoe storage', shoe:'Shoe storage', wardrobe:'Clothes storage for two', oshiire:'Clothes storage for two', jang:'Clothes storage for two', dining:'Table for two', kotatsu:'Table for two', soban:'Table for two', sofa:'Seats for two', cleaning:'Cleaning storage', pantry:'Food storage (pantry or kitchen cupboards)', bins:'Recycling bins (under the sink or separate)', washer:'Laundry: washer-dryer'};
+    const met = new Set(readyForTwo().filter(x => x.ok).map(x => x.k));
+    const miss = S.unplaced.filter(t => CAT[t] && !S.items.some(i => i.type === t) && !(needOf[t] && met.has(needOf[t])) && !['nightstand', 'divider', 'shelf', 'desk', 'stove', 'fridge'].includes(t)); if (miss.length) ck('warn', 'No room found for: ' + miss.map(t => CAT[t].label.toLowerCase()).join(', ') + '. Add them from Furnish, or pick smaller ones.'); }
   { const r2 = readyForTwo(); const miss = r2.filter(x => !x.ok); ck(miss.length ? 'warn' : 'ok', miss.length ? `Ready for two: ${r2.length - miss.length} of ${r2.length}, missing ${miss.map(x => x.k.toLowerCase()).join(', ')}` : 'Ready for two people, everything a couple needs is in'); }
+  if (S.program.access) {
+    const wide = S.openings.some(o => OPN[o.type].kind === 'door' && o.w >= 900);
+    ck(wide ? 'ok' : 'bad', wide ? 'Wheelchair: entry door at least 90 cm wide' : 'Wheelchair: use a door at least 90 cm wide');
+    ck(S.site.entry === 'steps' ? 'bad' : 'ok', S.site.entry === 'ramp' ? `Step-free entry: ${(rampLen() / 1000).toFixed(1)} m ramp at 1:12` : S.site.entry === 'lift' ? 'Step-free entry: platform lift' : `Step-free entry needed, the floor is ${(S.site.rise / 1000).toFixed(2)} m up. Add a ramp or lift in Shape`);
+    const tc = turnCheck(geo);
+    ck(tc.living ? 'ok' : 'warn', tc.living ? 'Wheelchair turning circle (1.5 m) in the living area' : 'No 1.5 m wheelchair turning circle in the living area');
+    ck(tc.bath ? 'ok' : 'warn', tc.bath ? 'Wheelchair turning circle (1.5 m) in the bathroom' : 'Bathroom too small to turn a wheelchair (needs a 1.5 m circle)');
+    const fx = S.items.some(i => i.type === 'accshower') && S.items.some(i => i.type === 'acctoilet') && S.items.some(i => i.type === 'accbasin');
+    ck(fx ? 'ok' : 'warn', fx ? 'Accessible bathroom: roll-in shower, grab bars, knee-space basin' : 'Use accessible bathroom fittings (roll-in shower, grab bars, wall-hung basin)');
+    const pd = S.items.filter(i => i.type === 'partition' && i.opt && i.opt.door).every(i => (i.opt.dw || 0) >= 850);
+    ck(pd ? 'ok' : 'warn', pd ? 'Inside doors at least 85 cm' : 'Widen inside doors to at least 85 cm');
+  }
   const br = bracing(geo);
   ck(br.x >= 2 && br.y >= 2 ? 'ok' : 'bad', `Solid walls for bracing: ${br.x} across, ${br.y} along (need 2 each)`);
   const glass = S.openings.reduce((s, o) => s + (OPN[o.type].glass ? o.w * o.h : 0), 0) / 1e6;
@@ -408,7 +430,7 @@ function validate(geo) {
   ck(gr >= .1 && gr <= .35 ? 'ok' : 'warn', gr < .1 ? `Glass ${glass.toFixed(1)} m², rooms may feel dark (aim 10–35% of floor)` : gr > .35 ? `Glass ${glass.toFixed(1)} m², high heat loss and overheating risk` : `Glass ${glass.toFixed(1)} m², ${Math.round(gr*100)}% of floor`);
   const sun = sunCheck(geo); if (sun) ck(sun.ok ? 'ok' : 'warn', sun.text);
   const wk = walkCheck(geo);
-  if (wk) ck(wk.unreachable.length ? 'warn' : 'ok', wk.unreachable.length ? `Hard to reach (needs a 55 cm path, 40 cm in the bathroom): ${[...new Set(wk.unreachable.map(i => CAT[i.type].label.toLowerCase()))].join(', ')}` : 'A clear path reaches everything from the door');
+  if (wk) ck(wk.unreachable.length ? 'warn' : 'ok', wk.unreachable.length ? `Hard to reach (needs a ${S.program.access ? '80 cm wheelchair path' : '55 cm path, 40 cm in the bathroom'}): ${[...new Set(wk.unreachable.map(i => CAT[i.type].label.toLowerCase()))].join(', ')}` : 'A clear path reaches everything from the door');
   const bad = Object.values(res.items).filter(a => a.length).length + Object.values(res.ops).filter(a => a.length).length;
   ck(bad ? 'bad' : 'ok', bad ? `${bad} part${bad > 1 ? 's' : ''} need moving (red outline)` : 'Nothing overlaps or blocks a door');
   if (S.shape.Wc > 2550) ck('warn', 'Central module wider than 2.55 m needs a wide-load permit');
@@ -458,6 +480,8 @@ function segDist(p, a, b) { const d = sub(b, a), l2 = dot(d, d) || 1, t = clamp(
 function polyDist(p, P) { if (inPoly(p, P)) return 0; let m = 1e9; for (let i = 0; i < P.length; i++) m = Math.min(m, segDist(p, P[i], P[(i + 1) % P.length])); return m; }
 function walkCheck(geo, st, R0) {
   st = st || S;
+  const acc = !!(st.program && st.program.access);
+  if (!R0 && acc) R0 = 400;
   if (!R0) { const a = walkCheck(geo, st, 270); if (!a || !a.unreachable.some(i => CAT[i.type].zone === 'wet')) return a;
     const b = walkCheck(geo, st, 200); const ids = new Set(b ? b.unreachable.map(i => i.id) : []);
     return {unreachable:a.unreachable.filter(i => CAT[i.type].zone !== 'wet' || ids.has(i.id)), entryBlocked:a.entryBlocked}; }
@@ -476,7 +500,7 @@ function walkCheck(geo, st, R0) {
     const [i0, i1] = range(xsLo - R, xsHi + R, nx, x0), [j0, j1] = range(ysLo - R, ysHi + R, ny, y0);
     for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const k = j * nx + i; if (free[k] && distFn([cx(i), cy(j)]) < R) free[k] = 0; } };
   walls.forEach(e => clearNear(Math.min(e.a[0], e.b[0]), Math.min(e.a[1], e.b[1]), Math.max(e.a[0], e.b[0]), Math.max(e.a[1], e.b[1]), p => segDist(p, e.a, e.b)));
-  st.items.filter(i => CAT[i.type] && !CAT[i.type].overlay).forEach(i => solidPolys(i).forEach(P => {
+  st.items.filter(i => CAT[i.type] && !CAT[i.type].overlay && !CAT[i.type].passable).forEach(i => solidPolys(i).forEach(P => {
     const xs = P.map(p => p[0]), ys = P.map(p => p[1]); clearNear(Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys), p => polyDist(p, P)); }));
   const door = st.openings.find(o => OPN[o.type].kind === 'door'); if (!door) return null;
   const f = opFrame(geo, door); if (!f) return null;
@@ -492,13 +516,16 @@ function walkCheck(geo, st, R0) {
       const kk = b * nx + a; if (seen[kk] || !free[kk]) continue; if (di && dj && (!free[j * nx + a] || !free[b * nx + i])) continue; seen[kk] = 1; q.push(kk); } }
   const unreachable = all.filter(it => {
     const c = CAT[it.type], fr = frontDir(it.rot), sd = [fr[1], -fr[0]];
-    const pts = [add([it.x, it.y], mul(fr, it.d/2 + R + 60))];
+    const f0 = add([it.x, it.y], mul(fr, it.d/2 + R + 60)), wq = Math.max(0, it.w/2 - 150);
+    const pts = [f0, add(f0, mul(sd, wq)), add(f0, mul(sd, -wq))];
+    if (c.passable) pts.push([it.x, it.y], add([it.x, it.y], mul(sd, it.w/2 + R + 60)), add([it.x, it.y], mul(sd, -(it.w/2 + R + 60))));
     if (!c.wall) { pts.push(add([it.x, it.y], mul(fr, -(it.d/2 + R + 60))), add([it.x, it.y], mul(sd, it.w/2 + R + 60)), add([it.x, it.y], mul(sd, -(it.w/2 + R + 60)))); }
     return !pts.some(p => near(p, 3, seen) >= 0);
   });
   return {unreachable};
 }
 
+const rampLen = () => (S.site.rise || 740) * 12 + 1500;
 /* storage and the essentials a couple needs */
 function itemStore(it) { if (it.type === 'kitchen') return Math.round(it.w / 1000 * 350); return CAT[it.type].store || 0; }
 function storageLitres(st) { return ((st || S).items || []).reduce((s, i) => s + (CAT[i.type] ? itemStore(i) : 0), 0) + (((st || S).items || []).some(i => i.type === 'basin') ? 60 : 0); }
@@ -513,13 +540,13 @@ function readyForTwo(st) {
     {k:'Fridge', ok:st.items.some(i => i.type === 'fridge' || (i.type === 'kitchen' && i.opt && i.opt.fridge)), add:'fridge'},
     {k:'Table for two', ok:has('dining', 'foldtable', 'kotatsu', 'soban', 'desk', 'nook') || pull, add:style === 'japanese' ? 'kotatsu' : style === 'korean' ? 'soban' : 'dining'},
     {k:'Seats for two', ok:has('sofa', 'sofabed', 'kotatsu', 'soban', 'dining', 'benchstore', 'nook') || pull, add:'nook'},
-    {k:'Toilet', ok:has('toilet', 'wc'), add:'toilet'},
-    {k:'Shower or bath', ok:has('shower', 'bath', 'ofuro'), add:'shower'},
-    {k:'Hand basin', ok:has('basin'), add:'basin'},
+    {k:'Toilet', ok:has('toilet', 'wc', 'acctoilet'), add:'toilet'},
+    {k:'Shower or bath', ok:has('shower', 'bath', 'ofuro', 'accshower'), add:'shower'},
+    {k:'Hand basin', ok:has('basin', 'accbasin'), add:'basin'},
     {k:'Laundry: washer-dryer', ok:has('washer') || st.items.some(i => i.type === 'kitchen' && i.opt && i.opt.washer), add:'washer'},
     {k:'Drying rack', ok:has('dryrack', 'washer') || st.items.some(i => i.type === 'kitchen' && i.opt && i.opt.washer), add:'dryrack'},
     {k:'Clothes storage for two', ok:has('wardrobe', 'oshiire', 'jang', 'rail') || (has('bed160', 'bed140', 'tatamibed') && count('overhead') >= 2), add:style === 'japanese' ? 'oshiire' : style === 'korean' ? 'jang' : 'wardrobe'},
-    {k:'Shoe storage', ok:has('getabako', 'shoe', 'benchstore'), add:'getabako'},
+    {k:'Shoe storage', ok:has('getabako', 'shoe', 'benchstore', 'shoeslim'), add:'getabako'},
     {k:'Food storage (pantry or kitchen cupboards)', ok:has('pantry') || st.items.some(i => i.type === 'kitchen' && i.w >= 1800), add:'pantry'},
     {k:'Cleaning storage', ok:has('cleaning', 'cleanrail'), add:'cleaning'},
     {k:'Recycling bins (under the sink or separate)', ok:has('bins', 'kitchen'), add:'bins'},
@@ -529,6 +556,25 @@ function readyForTwo(st) {
   const store = storageLitres(st);
   L.push({k:`Storage ${store.toLocaleString('en-US')} L of ${STORE_TARGET.toLocaleString('en-US')} L`, ok:store >= STORE_TARGET, add:'storefill'});
   return L;
+}
+
+/* wheelchair turning space: a free 1.5 m circle in the living area and in the bathroom */
+function turnCheck(geo, st) {
+  st = st || S; const R = 750, C = 100, zones = geo.zones, walls = [];
+  zones.forEach(z => z.edges.forEach(e => { if (e.wall) walls.push(e); }));
+  const obs = st.items.filter(i => CAT[i.type] && !CAT[i.type].overlay && !CAT[i.type].passable && i.type !== 'accbasin').flatMap(i => solidPolys(i));
+  const [x0, y0, x1, y1] = geo.bbox, free = [];
+  for (let y = y0 + C / 2; y < y1; y += C) for (let x = x0 + C / 2; x < x1; x += C) {
+    const p = [x, y]; if (!inZones(x, y, zones)) continue;
+    if (walls.some(e => segDist(p, e.a, e.b) < R)) continue;
+    if (obs.some(P => polyDist(p, P) < R)) continue;
+    free.push(p);
+  }
+  const wc = st.items.find(i => i.type === 'acctoilet' || i.type === 'toilet' || i.type === 'wc'), part = st.items.filter(i => i.type === 'partition');
+  const sameSide = (p, q) => !part.some(it => partitionPolys(it).some(P => { for (let k = 0; k <= 10; k++) { const r = add(p, mul(sub(q, p), k / 10)); if (inPoly(r, P)) return true; } return false; }));
+  const bath = wc ? free.some(p => Math.hypot(p[0] - wc.x, p[1] - wc.y) < 2200 && sameSide(p, [wc.x, wc.y])) : false;
+  const living = free.some(p => !wc || !sameSide(p, [wc.x, wc.y]));
+  return {bath, living};
 }
 
 /* ======================= COSTS ======================= */
@@ -547,6 +593,7 @@ function itemCost(it) {
 function opCost(o) {
   const P = S.prices, sp = OPN[o.type], tri = S.spec.glazing === 'triple';
   if (o.type === 'door') return P.door_ext;
+  if (o.type === 'door_wide') return P.door_wide ?? 300;
   if (o.type === 'door_glass') return P.door_glass;
   if (o.type === 'slide') return (tri ? P.slide_tri : P.slide_dbl) * Math.max(.7, o.w / 2000);
   return Math.max(140, (tri ? P.win_tri : P.win_dbl) * o.w * o.h / 1e6);
@@ -626,6 +673,8 @@ function costs(geo) {
   const tr = trucksFor(geo);
   L('Transport and install', `${tr.n} truck${tr.n > 1 ? 's' : ''}, ${S.site.km} km${tr.wide ? ', wide load' : ''}`, tr.n * (P.truck_base + P.truck_km * S.site.km) * (tr.wide ? 1.4 : 1));
   L('Transport and install', 'Crane, one day', P.crane);
+  if (S.site.entry === 'ramp') L('Transport and install', `Access ramp 1:12, ${(rampLen() / 1000).toFixed(1)} m with landings`, rampLen() / 1000 * (P.ramp_m ?? 320));
+  if (S.site.entry === 'lift') L('Transport and install', 'Platform lift', P.lift ?? 4200);
   L('Transport and install', 'Site crew', P.crew);
   const sub = lines.reduce((s, l) => s + l.v, 0);
   L('Contingency', `Contingency ${P.contingency}%`, sub * P.contingency / 100);

@@ -189,6 +189,10 @@ function renderPanel() {
       h += `</div>`;
     });
     h += `<button class="btn primary" data-act="auto-all">Re-plan inside for this shape</button>`;
+    h += `<h3>Getting in</h3>`;
+    h += sel('Entry', 'site.entry', [['steps', 'Steps'], ['ramp', 'Ramp, step-free'], ['lift', 'Platform lift, step-free']]);
+    h += rng('Floor height above ground', 'site.rise', 300, 900, 50, ' mm');
+    if (S.site.entry === 'ramp') h += `<p class="note">A 1:12 ramp needs about ${(rampLen() / 1000).toFixed(1)} m including landings. Lower screw piles shorten it.</p>`;
     h += `<h3>Sun and orientation</h3><p class="note">Point the big glass toward the sun for free winter heat and better solar panels.</p>`;
     h += rng('Turn from north', 'site.north', 0, 355, 5, '°', v => `${v}°, plan top faces ${DIRS[Math.round(((v % 360) + 360) % 360 / 45) % 8]}`);
     h += `<div class="field stack"><label>Quick set: plan top faces</label><div class="seg">${[[0, 'N'], [90, 'E'], [180, 'S'], [270, 'W']].map(([v, l]) => `<button data-set="site.north" data-val="${v}" aria-pressed="${+S.site.north === v}">${l}</button>`).join('')}</div></div>`;
@@ -210,6 +214,8 @@ function renderPanel() {
   if (t === 'furnish') {
     const pr = S.program;
     h += `<h2>Furnish</h2><p class="lead">Tell it what you need and it arranges everything. Lock pieces you like, then arrange again.</p>`;
+    h += `<div class="box">${chk('Wheelchair accessible: wide doors, 80 cm paths, roll-in shower, grab bars, knee-space basin and kitchen', 'program.access')}${chk('Second exit door', 'program.secondExit')}</div>`;
+    if (pr.access && S.site.entry === 'steps') h += `<p class="note" style="color:var(--warn)">Add a ramp or lift under Shape, Getting in, for step-free entry.</p>`;
     h += `<div class="field stack"><label>Living style</label>${seg('program.style', [['standard', 'Standard'], ['japanese', 'Japanese'], ['korean', 'Korean']])}</div>`;
     h += `<p class="note">${({standard:'Bed, wardrobe, sofa and dining table.', japanese:'Tatami platform bed with drawers, oshiire futon closet, kotatsu table with floor chairs, ofuro soaking tub.', korean:'Bed, jang chest, folding low table (bapsang). Try ondol floor heating in Energy and water.'})[pr.style || 'standard']}</p>`;
     { const r2 = readyForTwo(), ok = r2.filter(x => x.ok).length, st = storageLitres();
@@ -422,7 +428,7 @@ function buildThumbsStep() {
   (window.requestIdleCallback || setTimeout)(buildThumbsStep, {timeout:200});
 }
 /* ======================= BETTER ARRANGEMENTS ======================= */
-const ESS = ['kitchen', 'bed160', 'bed140', 'bed90', 'tatamibed', 'wallbed', 'energy', 'shower', 'bath', 'ofuro', 'toilet', 'wc', 'basin', 'sofabed'];
+const ESS = ['kitchen', 'bed160', 'bed140', 'bed90', 'tatamibed', 'wallbed', 'energy', 'shower', 'bath', 'ofuro', 'toilet', 'wc', 'basin', 'sofabed', 'accshower', 'acctoilet', 'accbasin'];
 function scoreLayout(st, failed) {
   const keepS = S; S = st;
   const g = buildGeo(st.shape), why = [], warn = [];
@@ -521,7 +527,7 @@ function varStep() {
 function badness() {
   const g = buildGeo(S.shape), v = validate(g), has = (...t) => S.items.some(i => t.includes(i.type));
   let n = Object.values(v.items).filter(x => x.length).length + Object.values(v.ops).filter(x => x.length).length;
-  [['bed160', 'bed140', 'bed90', 'tatamibed', 'wallbed', 'sofabed'], ['kitchen'], ['toilet', 'wc'], ['shower', 'bath', 'ofuro'], ['basin']].forEach(t => { if (!has(...t)) n += 10; });
+  [['bed160', 'bed140', 'bed90', 'tatamibed', 'wallbed', 'sofabed'], ['kitchen'], ['toilet', 'wc', 'acctoilet'], ['shower', 'bath', 'ofuro', 'accshower'], ['basin', 'accbasin']].forEach(t => { if (!has(...t)) n += 10; });
   const wk = walkCheck(g); if (wk) n += wk.unreachable.length;
   return n;
 }
@@ -689,6 +695,13 @@ function build3D() {
     });
     piece(cur, e.len, 0, WH);
   });
+  // ramp from the first entry door
+  if (S.site.entry === 'ramp') { const d0 = S.openings.find(o => OPN[o.type].kind === 'door'), f = d0 && opFrame(geo, d0);
+    if (f) { const L2 = rampLen() / 1000, rise = (S.site.rise || 740) / 1000, out = mul(f.e.n, -1), u = f.e.u, m0 = mul(add(f.a, f.b), .5);
+      const land = add(m0, mul(out, 750)), dir = Math.abs(u[0]) > Math.abs(u[1]) ? u : u;
+      box(1.5, .06, 1.5, land[0] * s, FLOOR_H * s - .04, land[1] * s, Math.atan2(-u[1], u[0]), mat(0x9AA3A6));
+      const rl = L2 - 1.5, ctr = add(add(m0, mul(out, 1500 + 600)), mul(dir, rl * 500)), g = new THREE.Mesh(V3.unit, mat(0x9AA3A6));
+      g.scale.set(rl, .06, 1.2); g.position.set(ctr[0] * s, FLOOR_H * s - rise / 2 - .02, ctr[1] * s); g.rotation.order = 'YXZ'; g.rotation.y = Math.atan2(-dir[1], dir[0]); g.rotation.z = -Math.atan(rise / rl); root.add(g); } }
   // steel frame view
   if (G.frame) {
     const st = mat(0xC9562F), bl = mat(0x3D7FC0);
@@ -731,9 +744,13 @@ function itemMesh(it, box) {
   const g = new THREE.Group(), w = it.w / 1000, d = it.d / 1000, t = it.type;
   const W = mat(0xF4F3EF), wood = mat(0xC79A63), dark = mat(0x2D3234), fab = mat(0x8EA58C), bed = mat(0xE9E4DA), grey = mat(0xA9AFB0), glass = mat(0xA6D3E2, {transparent:true, opacity:.35});
   const B = (bw, bh, bd, x, y, z, m) => box(bw, bh, bd, x, y, z, 0, m, g);
-  if (t === 'tatamibed') { B(w, .3, d, 0, .15, 0, wood); B(w - .06, .06, d - .06, 0, .33, 0, mat(0xCBC28A)); B(w - .3, .12, 1.0, 0, .42, .3, bed); B(w - .3, .1, .3, 0, .41, -d/2 + .3, W); }
+  if (t === 'accshower') { B(w, .02, d, 0, .01, 0, mat(0xC9D6DA)); B(.02, 2, d, w/2, 1, 0, glass); B(.35, .04, .35, -w/2 + .2, .47, -d/2 + .2, wood); }
+  else if (t === 'acctoilet') { B(.4, .42, .5, 0, .21, .05, W); B(.4, .45, .18, 0, .5, -d/2 + .09, W); B(.03, .03, .6, -w/2 + .02, .75, 0, grey); B(.03, .03, .6, w/2 - .02, .75, 0, grey); }
+  else if (t === 'accbasin') { B(w, .12, d, 0, .82, 0, W); B(w - .05, .6, .02, 0, 1.45, -d/2 + .01, glass); }
+  else if (t === 'tatamibed') { B(w, .3, d, 0, .15, 0, wood); B(w - .06, .06, d - .06, 0, .33, 0, mat(0xCBC28A)); B(w - .3, .12, 1.0, 0, .42, .3, bed); B(w - .3, .1, .3, 0, .41, -d/2 + .3, W); }
   else if (t === 'oshiire') { B(w, 2.1, d, 0, 1.05, 0, mat(0xEDE6D3)); B(w - .04, .03, .02, 0, 1.0, d/2 + .01, mat(0x9B8F72)); }
   else if (t === 'jang') { B(w, 1.1, d, 0, .55, 0, mat(0x8A5A3C)); B(w, .04, d + .02, 0, 1.12, 0, mat(0x6E4630)); }
+  else if (t === 'shoeslim') B(w, 1.1, d, 0, .55, 0, mat(0xE6E1D6));
   else if (t === 'getabako' || t === 'pantry' || t === 'cleaning') B(w, CAT[t].h / 1000, d, 0, CAT[t].h / 2000, 0, t === 'pantry' ? W : mat(0xD8CBB4));
   else if (t === 'nook') { B(w, .45, d, 0, .225, 0, wood); B(w - .1, .06, d - .1, 0, .48, 0, fab); B(w - .2, .7, .03, 0, 1.25, -d/2 + .03, wood); }
   else if (t === 'rail') { B(.03, 1.8, d, -w/2 + .02, .9, 0, grey); B(.03, 1.8, d, w/2 - .02, .9, 0, grey); B(w, .03, .03, 0, 1.75, 0, grey); B(w - .1, 1.0, d - .1, 0, 1.2, 0, mat(0x9DA6B5)); }
@@ -881,7 +898,7 @@ function smartSuggestions() {
   if (lim && geo.area > lim + 1e-4) push('bad', `Shrink to fit ${lim} m²`, `Now ${geo.area.toFixed(1)} m²`, () => { snapshot(); fit25(); G.motion = true; commit(true); });
   const miss = [];
   if (!has('bed160', 'bed140', 'bed90', 'tatamibed', 'wallbed', 'sofabed')) miss.push('bed'); if (!has('kitchen')) miss.push('kitchen');
-  if (!has('toilet', 'wc')) miss.push('toilet'); if (!has('shower', 'bath', 'ofuro')) miss.push('shower');
+  if (!has('toilet', 'wc', 'acctoilet')) miss.push('toilet'); if (!has('shower', 'bath', 'ofuro', 'accshower')) miss.push('shower');
   if (miss.length) push('bad', 'Add what is missing', miss.join(', '), () => runAuto('furn'));
   if (v.checks.some(c => c.state === 'bad' && /from an exit/.test(c.text))) push('bad', 'Move the bed away from the exit', `Keep at least ${BED_EXIT_MIN / 1000} m clear`, () => runAuto('furn'));
   const nb = Object.values(v.items).filter(a => a.length).length + Object.values(v.ops).filter(a => a.length).length;
@@ -1105,7 +1122,7 @@ function renderSiteHomes() {
   const box = $('#siteHomes'); if (!box) return;
   const items = PRESET_GROUPS[0].items.map((p, i) => ({p, i}));
   box.innerHTML = items.map(({p, i}) => { const th = G.thumbs && G.thumbs[i]; if (th && th.cost == null) layCard(i);
-    return `<button class="scard reveal" data-home="${i}">${th ? th.svg : '<div class="skel"></div>'}<b>${esc(p.name)}</b><span>${th ? `${th.area.toFixed(1)} m² · from ${money(th.cost)}` : 'Preparing…'}</span></button>`; }).join('');
+    return `<button class="scard reveal${p.main ? ' main' : ''}" data-home="${i}">${th ? th.svg : '<div class="skel"></div>'}${p.main ? '<span class="badge">Main design · wheelchair-ready</span>' : ''}<b>${esc(p.name)}</b><span>${th ? `${th.area.toFixed(1)} m² · ${th.mods} modules · from ${money(th.cost)}` : 'Preparing…'}</span></button>`; }).join('');
   box.querySelectorAll('[data-it],[data-op]').forEach(el => { el.removeAttribute('data-it'); el.removeAttribute('data-op'); });
   observeReveal();
   const costsK = (G.thumbs || []).slice(0, PRESET_GROUPS[0].items.length).filter(t => t && t.cost != null).map(t => t.cost);
@@ -1178,7 +1195,7 @@ function wipeTo(fn) {
 }
 function heroBlueprint() {
   const box = $('#heroPlan'); if (!box || !G.thumbs) return;
-  const picks = [0, 4, 5, 2].filter(i => G.thumbs[i] && G.thumbs[i].state);
+  const picks = [0, 2, 3, 6].filter(i => G.thumbs[i] && G.thumbs[i].state);
   const g = GS();
   if (!g) { heroPlansStatic(); return; }
   if (!picks.length || box.dataset.bp) return; box.dataset.bp = '1';
@@ -1213,7 +1230,7 @@ function heroBlueprint() {
 }
 function buildAsm() {
   const svg = $('#asmSvg'); if (!svg || svg.dataset.done) return null; svg.dataset.done = '1';
-  const geo = buildGeo(SHAPE_A()), Hh = 2900, K = .066, c30 = Math.cos(Math.PI / 6);
+  const geo = buildGeo(SHAPE_2M()), Hh = 2900, K = .07, c30 = Math.cos(Math.PI / 6);
   const b = geo.bbox, cx = (b[0] + b[2]) / 2, cy = (b[1] + b[3]) / 2;
   const Q = (x, y, z) => [500 + (x - cx - (y - cy)) * c30 * K, 425 + (x - cx + (y - cy)) * .5 * K - z * K];
   const P = arr => arr.map(p => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
@@ -1230,8 +1247,8 @@ function buildAsm() {
       if (e.type === 'ext' && e.len > 1800) { const u0 = .3, u1 = .7, A = add(e.a, mul(sub(e.b, e.a), u0)), B = add(e.a, mul(sub(e.b, e.a), u1));
         g += `<polygon points="${P([Q(A[0], A[1], 900), Q(B[0], B[1], 900), Q(B[0], B[1], 2300), Q(A[0], A[1], 2300)])}" fill="#9CCBDD" stroke="#1E2A2E" stroke-width="1"/>`; } });
     g += `<polygon points="${P(m.poly.map(p => Q(p[0], p[1], Hh)))}" fill="#EEF0EC" stroke="#1E2A2E" stroke-width="1.3" stroke-linejoin="round"/>`;
-    if (m.key === 'C') { const xs = m.poly.map(p => p[0]), ys = m.poly.map(p => p[1]), x0 = Math.min(...xs) + 250, y0 = Math.min(...ys) + 300;
-      for (let r = 0; r < 2; r++) for (let c = 0; c < 2; c++) { const px = x0 + c * 1050, py = y0 + r * 2300;
+    if (m.key === 'C') { const xs = m.poly.map(p => p[0]), ys = m.poly.map(p => p[1]), x0 = Math.min(...xs) + 300, y0 = Math.min(...ys) + 300;
+      for (let r = 0; r < 2; r++) for (let c = 0; c < 2; c++) { const px = x0 + c * 1250, py = y0 + r * 2400;
         g += `<polygon class="asm-pv" points="${P([Q(px, py, Hh + 60), Q(px + 950, py, Hh + 60), Q(px + 950, py + 2000, Hh + 60), Q(px, py + 2000, Hh + 60)])}" fill="#1C2A44" stroke="#0E1626" stroke-width="1"/>`; } }
     g += `</g></g>`; h += g;
   });
@@ -1346,11 +1363,11 @@ function initSiteMotion() {
   g.to('#sprog', {scaleX:1, ease:'none', scrollTrigger:{trigger:'#site', start:'top top', end:'bottom bottom', scrub:.2}});
   const nav = document.querySelector('.snav');
   let lastY = 0; ST.create({start:0, end:'max', onUpdate:() => { const y = window.scrollY; nav.classList.toggle('hide', y > lastY && y > 400); lastY = y; }});
-  [['how', 's-how'], ['homes', 's-homes'], ['included', 's-included'], ['faq', 's-faq']].forEach(([k, id]) => { const a = document.querySelector(`.slinks [data-go="${k}"]`);
+  [['access', 's-access'], ['how', 's-how'], ['homes', 's-homes'], ['included', 's-included'], ['faq', 's-faq']].forEach(([k, id]) => { const a = document.querySelector(`.slinks [data-go="${k}"]`);
     ST.create({trigger:'#' + id, start:'top 50%', end:'bottom 50%', onToggle:self => a && a.classList.toggle('on', self.isActive)}); });
   // feature icons draw on
   document.querySelectorAll('.ficon path').forEach(p => { const L = p.getTotalLength(); g.set(p, {strokeDasharray:L, strokeDashoffset:L}); });
-  g.to('.ficon path', {strokeDashoffset:0, duration:1.2, stagger:.15, ease:'power2.inOut', scrollTrigger:{trigger:'#s-included', start:'top 75%', once:true}});
+  document.querySelectorAll('.feat').forEach(f => g.to(f.querySelectorAll('.ficon path'), {strokeDashoffset:0, duration:1.2, stagger:.15, ease:'power2.inOut', scrollTrigger:{trigger:f, start:'top 80%', once:true}}));
   // energy and water flow diagram
   buildFlow();
   const fs2 = document.querySelectorAll('#flowSvg .fnode');

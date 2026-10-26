@@ -30,7 +30,7 @@ function planZones(geo) {
       res.wetMods = wm; res.wetAll = all.length === wm.length;
     }
   }
-  if (bw === 'end') { res.mode = 'end'; const depth = S.program.bathing === 'bath' ? 1750 : 1550; res.endY = h.bedEnd === 'top' ? L - depth : depth; }
+  if (bw === 'end') { res.mode = 'end'; const depth = h.bathDepth || (S.program.access ? 2200 : S.program.bathing === 'bath' ? 1750 : 1550); res.endY = h.bedEnd === 'top' ? L - depth : depth; }
   if (!res.kitMods.length && h.kitchenIn !== 'central') {
     const wetG = res.wetMods.length ? grp(res.wetMods[0].key) : null;
     const others = ['LW', 'RW'].filter(g => g !== wetG).map(g => wingMods(geo, g)).filter(a => a.length).sort((a, b) => modsArea(b) - modsArea(a));
@@ -47,17 +47,23 @@ function autoOpenings(geo) {
   const wetKeys = new Set(pl.wetMods.map(m => m.key)), kitKeys = new Set(pl.kitMods.map(m => m.key));
   const top = S.hints.bedEnd === 'top';
   const inWetY = y => pl.mode === 'end' && (top ? y > pl.endY - 1 : y < pl.endY + 1);
-  const dry = e => !wetKeys.has(e.mod) && !(inWetY(e.a[1]) || inWetY(e.b[1]));
-  const wetEdge = e => wetKeys.has(e.mod) || (inWetY(e.a[1]) && inWetY(e.b[1]));
+  const inScope = e => S.hints.bathScope !== 'central' || e.mod === 'C';
+  const dry = e => !wetKeys.has(e.mod) && !(inScope(e) && (inWetY(e.a[1]) || inWetY(e.b[1])));
+  const wetEdge = e => wetKeys.has(e.mod) || (inScope(e) && inWetY(e.a[1]) && inWetY(e.b[1]));
   const target = pl.mode === 'end' ? pl.endY : otherY;
   const da = S.hints.doorAt || 'auto';
   const dsc = e => Math.abs(mid(e)[1] - target) + (e.mod === 'C' ? 0 : 300) + (kitKeys.has(e.mod) && vertical(e) ? 1500 : 0)
     + (da === 'side' ? (vertical(e) ? 0 : 3000) : da === 'end' ? (Math.abs(e.u[0]) > .9 ? 0 : 3000) : 0);
   const de = geo.ext.filter(e => dry(e) && e.len >= 1300 && !isEnd(e, bedY)).sort((a, b) => dsc(a) - dsc(b))[0];
-  if (de) ops.push(newOpening('door', de.key, de.len / 2, {pri:9}));
+  const dType = S.program.access ? 'door_wide' : 'door';
+  if (de) ops.push(newOpening(dType, de.key, de.len / 2, {pri:9}));
+  if (de && S.program.secondExit) {
+    const far = geo.ext.filter(e => dry(e) && e.len >= 1300 && e.key !== de.key && !isEnd(e, bedY)).sort((a, b) => Math.hypot(mid(b)[0] - mid(de)[0], mid(b)[1] - mid(de)[1]) - Math.hypot(mid(a)[0] - mid(de)[0], mid(a)[1] - mid(de)[1]))[0];
+    if (far) ops.push(newOpening(dType, far.key, far.len / 2, {pri:9}));
+  }
   const ge = geo.ext.filter(e => e.mod === 'C' && isEnd(e, bedY)).sort((a, b) => b.len - a.len)[0];
   if (ge) {
-    if (ge.len >= 2600) ops.push(newOpening('slide', ge.key, ge.len / 2, {w:Math.min(2000, ge.len - 500), pri:8}));
+    if (ge.len >= 2600 && !S.program.secondExit) ops.push(newOpening('slide', ge.key, ge.len / 2, {w:Math.min(2000, ge.len - 500), pri:8}));
     else if (ge.len >= 1200) ops.push(newOpening('win_tall', ge.key, ge.len / 2, {w:Math.min(1600, ge.len - 420), pri:8}));
   }
   const oe = geo.ext.filter(e => e.mod === 'C' && isEnd(e, otherY) && dry(e)).sort((a, b) => b.len - a.len)[0];
@@ -74,12 +80,13 @@ function autoOpenings(geo) {
     const cands = S.openings.filter(o => o.pri < 8).sort((a, b) => a.pri - b.pri); if (!cands.length) break;
     S.openings = S.openings.filter(o => o !== cands[0]); }
   S.openings.forEach(o => delete o.pri);
+  if (S.program.access) S.items.forEach(i => { if (i.type === 'kitchen') i.opt = Object.assign({}, i.opt, {knee:true}); });
 }
 
 function programItems() {
   const p = S.program, st = p.style || 'standard', list = [];
-  const bathing = p.bathing === 'bath' ? (st === 'japanese' ? 'ofuro' : 'bath') : 'shower';
-  list.push(bathing, p.toilet, 'basin');
+  if (p.access) list.push('accshower', 'acctoilet', 'accbasin');
+  else { const bathing = p.bathing === 'bath' ? (st === 'japanese' ? 'ofuro' : 'bath') : 'shower'; list.push(bathing, p.toilet, 'basin'); }
   if (p.washer) list.push('washer');
   list.push('kitchen'); if (p.fridgeTall) list.push('fridge');
   let bed = p.bed; if (st === 'japanese' && bed === 'bed160') bed = 'tatamibed';
@@ -104,7 +111,7 @@ function programItems() {
 
 function autoArrange(mode) {
   const keep = JSON.stringify(S); let best = null;
-  const ess = ['kitchen', 'bed160', 'bed140', 'bed90', 'tatamibed', 'wallbed', 'energy', 'shower', 'bath', 'ofuro', 'toilet', 'wc', 'basin', 'sofabed'];
+  const ess = ['kitchen', 'bed160', 'bed140', 'bed90', 'tatamibed', 'wallbed', 'energy', 'shower', 'bath', 'ofuro', 'toilet', 'wc', 'basin', 'sofabed', 'accshower', 'acctoilet', 'accbasin'];
   for (const kf of [false, true]) {
     S = JSON.parse(keep);
     const f = arrangeOnce(mode, kf);
@@ -137,8 +144,8 @@ function arrangeOnce(mode, kitFirst) {
       const pool = parts.filter(p => p.central && p.len >= 1000);
       const dp = (pool.length ? pool : parts.filter(p => p.len >= 900)).sort((a, b) => Math.abs(a.c[1] - otherY) - Math.abs(b.c[1] - otherY))[0];
       parts.forEach(p => {
-        const it = newItem('partition', {x:p.c[0], y:p.c[1], rot:p.rot, w:Math.round(p.len)}); it.opt = {door:false, dpos:.5, dw:700};
-        if (p === dp) { const nearB = Math.abs(p.ze.b[1] - otherY) < Math.abs(p.ze.a[1] - otherY), fromEnd = Math.min(1350, p.len / 2);
+        const it = newItem('partition', {x:p.c[0], y:p.c[1], rot:p.rot, w:Math.round(p.len)}); it.opt = {door:false, dpos:.5, dw:S.program.access ? 900 : 700};
+        if (p === dp) { const nearB = Math.abs(p.ze.b[1] - otherY) < Math.abs(p.ze.a[1] - otherY), fromEnd = Math.min(S.program.access ? 1500 : 1350, p.len / 2);
           it.opt.door = true; it.opt.dpos = clamp((nearB ? p.len - fromEnd : fromEnd) / p.len, 0, 1); }
         S.items.push(it);
       });
@@ -148,16 +155,29 @@ function arrangeOnce(mode, kitFirst) {
   } else {
     const y0 = pl.endY;
     const wy = top ? [y0 + 50, L + 10] : [-10, y0 - 50], dy = top ? [-10, y0 - 50] : [y0 + 50, L + 10];
+    const scopeC = S.hints.bathScope === 'central';
+    const cz0 = geo.zones.find(z => z.key === 'C');
+    if (scopeC) {
+      // bathroom only inside the central module: walls across it and along any open joint beside it
+      let wz = clipZone(cz0, wy[0], wy[1]);
+      const jl = geo.mods.find(m => m.key === 'C').edges.filter(e => e.type === 'joint');
+      jl.forEach(e => { const lo = Math.min(e.a[1], e.b[1]), hi = Math.max(e.a[1], e.b[1]); if (hi <= wy[0] || lo >= wy[1]) return;
+        const nv = e.n, c = dot(e.a, nv) + 100; if (wz) { const P = dedupe(clipHalf(wz.poly, nv, c)); wz = P.length >= 3 ? Object.assign({}, wz, {poly:P}) : null; } });
+      if (wz) { const c0 = centroid(wz.poly); wz.edges = wz.poly.map((a, i) => { const b = wz.poly[(i + 1) % wz.poly.length], d = sub(b, a), l = len(d), u = nrm(d); let n = [-u[1], u[0]]; if (dot(n, sub(c0, mul(add(a, b), .5))) < 0) n = mul(n, -1); return {a, b, len:l, u, n, wall:true}; }); }
+      wetZs = wz ? [wz] : [];
+      if (!lockedPart) jl.forEach(e => { const lo = Math.max(Math.min(e.a[1], e.b[1]), wy[0] - 50), hi = Math.min(Math.max(e.a[1], e.b[1]), wy[1]); if (hi - lo < 300) return;
+        const x = e.a[0] + e.n[0] * 50, it = newItem('partition', {x, y:(lo + hi) / 2, rot:90, w:Math.round(hi - lo)}); it.opt = {door:false, dpos:.5, dw:700}; S.items.push(it); });
+    } else
     wetZs = geo.zones.map(z => clipZone(z, wy[0], wy[1])).filter(Boolean);
     wetZs.forEach(z => z.edges.forEach(e => { if (Math.abs(e.a[1] - e.b[1]) < 1 && Math.abs(e.a[1] - (top ? wy[0] : wy[1])) < 2) e.wall = true; }));
-    dryZones = geo.zones.map(z => clipZone(z, dy[0], dy[1])).filter(Boolean);
+    dryZones = scopeC ? geo.zones.map(z => z.key === 'C' ? clipZone(z, dy[0], dy[1]) : z).filter(Boolean) : geo.zones.map(z => clipZone(z, dy[0], dy[1])).filter(Boolean);
     cZone = dryZones.find(z => z.key === 'C');
     if (!lockedPart) {
       let xmin = 1e9, xmax = -1e9;
-      geo.zones.forEach(z => { for (let i = 0; i < z.poly.length; i++) { const a = z.poly[i], b = z.poly[(i + 1) % z.poly.length];
+      (scopeC ? [cz0] : geo.zones).forEach(z => { for (let i = 0; i < z.poly.length; i++) { const a = z.poly[i], b = z.poly[(i + 1) % z.poly.length];
         if ((a[1] - y0) * (b[1] - y0) <= 0 && Math.abs(a[1] - b[1]) > 1e-6) { const x = a[0] + (y0 - a[1]) * (b[0] - a[0]) / (b[1] - a[1]); xmin = Math.min(xmin, x); xmax = Math.max(xmax, x); } } });
       if (xmax > xmin) { const it = newItem('partition', {x:(xmin + xmax) / 2, y:y0, rot:0, w:Math.round(xmax - xmin)});
-        it.opt = {door:true, dpos:clamp((cx + 350 - xmin) / (xmax - xmin), .12, .88), dw:700}; S.items.push(it); }
+        it.opt = {door:true, dpos:clamp((cx + 350 - xmin) / (xmax - xmin), .12, .88), dw:S.program.access ? 900 : 700}; S.items.push(it); }
     }
   }
   if (!cZone) cZone = geo.zones.find(z => z.key === 'C');
@@ -169,6 +189,7 @@ function arrangeOnce(mode, kitFirst) {
   const liveHalf = clipZone(cZone, liveRange[0], liveRange[1]);
   let kitZones = pl.kitMods.length ? dryZones.filter(z => pl.kitMods.some(m => m.key === z.key)) : [];
   if (!kitZones.length) kitZones = [top ? clipZone(cZone, L * .5, L + 10) : clipZone(cZone, -10, L * .5)].filter(Boolean);
+  if (S.hints.bedIn === 'wing' && cZone) kitZones = [cZone];
   const entry = (() => { const d = S.openings.find(o => OPN[o.type].kind === 'door'); if (!d) return [cx, otherY]; const f = opFrame(geo, d); return f ? mul(add(f.a, f.b), .5) : [cx, otherY]; })();
   const windows = S.openings.filter(o => OPN[o.type].kind !== 'door').map(o => { const f = opFrame(geo, o); return f ? mul(add(f.a, f.b), .5) : null; }).filter(Boolean);
   const dist = (p, q) => Math.hypot(p[0] - q[0], p[1] - q[1]);
@@ -247,14 +268,15 @@ function arrangeOnce(mode, kitFirst) {
   const wet = want.filter(t => CAT[t].zone === 'wet' && t !== 'washer').sort((a, b) => CAT[b].w * CAT[b].d - CAT[a].w * CAT[a].d);
   let anchor = null;
   wet.forEach(t => {
-    const sc = it => anchor ? dist([it.x, it.y], anchor) : -dist([it.x, it.y], doorPt || entry);
+    const sc = (it, c) => (anchor ? dist([it.x, it.y], anchor) : -dist([it.x, it.y], doorPt || entry)) + (t === 'acctoilet' && c && c.edge && Math.abs(c.edge.u[0]) > .9 ? 1500 : 0) + (t === 'accshower' && c && c.edge && Math.abs(c.edge.u[0]) > .9 ? 600 : 0);
     let r = place(t, wetZs, sc) || place(t, [liveHalf], sc);
     if (!r && t === 'bath') { r = place('shower', wetZs, sc) || place('shower', [liveHalf], sc); if (r) S.swapped = (S.swapped || []).concat(['Bathtub did not fit, used a shower']); }
     if (r) { if (!anchor) anchor = [r.x, r.y]; } else failed.push(t);
   });
   // washer-dryer last: keep it in the bathroom only if every path stays clear, else under the kitchen counter
   let washerToKitchen = false;
-  if (want.includes('washer')) {
+  if (want.includes('washer') && S.program.access) washerToKitchen = true;
+  else if (want.includes('washer')) {
     const w0 = walkCheck(geo), b0 = w0 ? w0.unreachable.length : 0;
     const r = place('washer', wetZs, it => anchor ? dist([it.x, it.y], anchor) : 0);
     if (r) { const w1 = walkCheck(geo); if ((w1 ? w1.unreachable.length : 0) > b0) { S.items = S.items.filter(i => i !== r); washerToKitchen = true; } }
@@ -264,7 +286,8 @@ function arrangeOnce(mode, kitFirst) {
     const bedT = want.find(t => CAT[t].zone === 'bed'); if (!bedT) return;
     const target = [cx, bedY];
     const sc = (it, c) => dist([it.x, it.y], target) + (c.edge && Math.abs(c.edge.u[0]) > .9 ? 0 : 250);
-    const tryBed = t => place(t, bedZones, sc) || place(t, dryZones, sc) || place(t, dryZones, sc, {free:true});
+    const wingBed = S.hints.bedIn === 'wing' ? dryZones.filter(z => z.key !== 'C') : null;
+    const tryBed = t => (wingBed && wingBed.length && place(t, wingBed, (it, c) => (c.edge && Math.abs(c.edge.u[0]) > .9 ? 400 : 0) - dist([it.x, it.y], [cx, -1e4]) * 0)) || place(t, bedZones, sc) || place(t, dryZones, sc) || place(t, dryZones, sc, {free:true});
     if (tryBed(bedT)) return;
     const alt = ['bed140', 'bed90'].filter(t => BED_TYPES.indexOf(t) > BED_TYPES.indexOf(bedT));
     for (const t of alt) if (tryBed(t)) { S.swapped = (S.swapped || []).concat([`${CAT[bedT].label} did not fit away from the exit, used ${CAT[t].label.toLowerCase()}`]); return; }
@@ -279,6 +302,7 @@ function arrangeOnce(mode, kitFirst) {
     if (want.includes('fridge')) { const k = S.items.find(i => i.type === 'kitchen'); if (!place('fridge', [...kitZones, ...dryZones], it => k ? dist([it.x, it.y], [k.x, k.y]) : 0)) failed.push('fridge'); }
   };
   if (kitFirst) { doKitchen(); doBed(); } else { doBed(); doKitchen(); }
+  if (S.program.access) S.items.forEach(i => { if (i.type === 'kitchen') i.opt = Object.assign({}, i.opt, {knee:true}); });
   if (washerToKitchen) { const k = S.items.find(i => i.type === 'kitchen'); if (k) { k.opt = Object.assign({}, k.opt, {washer:true}); } else failed.push('washer'); }
   const bed = S.items.find(i => CAT[i.type].zone === 'bed');
   const kitItem = () => S.items.find(i => i.type === 'kitchen');
@@ -299,7 +323,7 @@ function arrangeOnce(mode, kitFirst) {
       || (['dining', 'kotatsu', 'soban'].includes(t) ? (place('foldtable', zs, sc) || place('nook', zs, sc)) : null)
       || (t === 'sofa' ? (place('benchstore', zs, sc) || place('nook', zs, sc)) : null)
       || (t === 'wardrobe' || t === 'oshiire' ? (place('jang', zs, sc) || place('rail', zs, sc)) : null)
-      || (t === 'getabako' ? (place('shoe', zs, sc) || place('benchstore', zs, sc)) : null)
+      || (t === 'getabako' ? (place('shoe', zs, sc) || place('benchstore', zs, sc) || place('shoeslim', zs, sc)) : null)
       || (t === 'cleaning' ? place('cleanrail', zs, sc) : null);
     if (!r && !['nightstand', 'divider', 'bins', 'cleaning'].includes(t)) failed.push(t);
   });
@@ -333,12 +357,12 @@ function arrangeOnce(mode, kitFirst) {
     if (!fixed) break;
   }
   {
-    const cands = {'Table for two':['nook', 'foldtable'], 'Seats for two':['nook', 'benchstore'], 'Clothes storage for two':['rail', 'jang', 'shelf'], 'Shoe storage':['shoe', 'benchstore', 'getabako'], 'Cleaning storage':['cleanrail', 'cleaning']};
+    const cands = {'Table for two':['nook', 'foldtable'], 'Seats for two':['nook', 'benchstore'], 'Clothes storage for two':['rail', 'jang', 'shelf'], 'Shoe storage':['shoe', 'benchstore', 'getabako', 'shoeslim'], 'Cleaning storage':['cleanrail', 'cleaning']};
     const w0 = walkCheck(geo), base = w0 ? w0.unreachable.length : 0;
     readyForTwo().filter(x => !x.ok && cands[x.k]).forEach(x => {
       if (readyForTwo().find(y => y.k === x.k).ok) return;
       for (const t of cands[x.k]) {
-        const r = place(t, dryZones, it => dist([it.x, it.y], t === 'shoe' || t === 'cleanrail' ? entry : [cx, otherY]));
+        const r = place(t, dryZones, it => dist([it.x, it.y], t === 'shoe' || t === 'shoeslim' || t === 'cleanrail' ? entry : [cx, otherY]));
         if (!r) continue;
         const w = walkCheck(geo); if ((w ? w.unreachable.length : 0) > base) { S.items = S.items.filter(i => i !== r); continue; }
         break;
@@ -375,8 +399,20 @@ const SH = (l, r) => ({Wc:2500, L:5400, left:l, right:r});
 const SPL = (a, b) => b == null ? {type:'straight', a, b:a} : {type:'diag', a, b};
 const SHAPE_A = () => SH(WG(0, 5400, 1000, 5400), WG(0, 3200, 0, 2200));
 const SHAPE_B = () => SH(WG(0, 3200, 0, 2200), WG(0, 5400, 1000, 5400, SPL(3200)));
+const ORANGE = (inTop, inBot) => ({on:true, w:3000, inTop, inBot, outTop:inTop, outBot:inBot, split:{type:'none', a:2200, b:3200}});
+const BLUE = (inTop, inBot) => ({on:true, w:2000, inTop, inBot, outTop:inTop, outBot:inBot, split:{type:'none', a:2200, b:3200}});
+const SHAPE_2M = () => ({Wc:3000, L:5500, left:BLUE(1300, 5500), right:WOFF()});
+const ACC = {access:true, secondExit:true, bed:'wallbed', dining:true, sofa:'none', wardrobe:true, desk:false};
 const PRESET_GROUPS = [
-  {title:'Signature homes', note:'All 24.9 m², two outlines with different room layouts.', items:[
+  {title:'Accessible two-module home', note:'Our main design: a 16.5 m² and an 8.4 m² module. Wheelchair-friendly, two exits, fold-away bed and table for open floor.', items:[
+    {name:'Accessible two-module home', main:true, fixed:true, shape:SHAPE_2M, hints:{bathWing:'end', bathScope:'central', bedEnd:'bottom', kitchenIn:'central', doorAt:'side', bedIn:'wing'}, prog:ACC, site:{entry:'ramp', rise:450, north:0}},
+    {name:'As drawn, compact 1.3 m bathroom', fixed:true, shape:SHAPE_2M, hints:{bathWing:'end', bathScope:'central', bedEnd:'bottom', kitchenIn:'central', doorAt:'side', bathDepth:1300, bedIn:'wing'}, prog:{secondExit:true, bed:'wallbed', dining:true, sofa:'none', bathing:'shower'}},
+    {name:'Blue + orange + blue, 33.3 m²', shape:() => ({Wc:3000, L:5500, left:BLUE(1300, 5500), right:BLUE(1300, 5500)}), hints:{bathWing:'end', bathScope:'central', bedEnd:'bottom', kitchenIn:'wing', doorAt:'side'}, prog:Object.assign({}, ACC, {bed:'bed160', sofa:'sofa'}), site:{entry:'ramp', rise:450}},
+    {name:'Blue + two orange, 41.4 m²', shape:() => ({Wc:3000, L:5500, left:BLUE(1300, 5500), right:ORANGE(0, 5500)}), hints:{bathWing:'right', bedEnd:'bottom', kitchenIn:'central', doorAt:'side'}, prog:Object.assign({}, ACC, {bed:'bed160', sofa:'sofa', desk:true}), site:{entry:'ramp', rise:450}},
+    {name:'Orange + blue + orange, 41.4 m²', shape:() => ({Wc:2000, L:4200, left:ORANGE(-1300, 4200), right:ORANGE(-1300, 4200)}), hints:{bathWing:'left', bedEnd:'bottom', kitchenIn:'wing', doorAt:'side'}, prog:Object.assign({}, ACC, {bed:'bed160', sofa:'sofa', desk:true}), site:{entry:'ramp', rise:450}},
+    {name:'Two blue + orange, 33.3 m²', shape:() => ({Wc:2000, L:4200, left:BLUE(0, 4200), right:ORANGE(-1300, 4200)}), hints:{bathWing:'right', bedEnd:'bottom', kitchenIn:'central', doorAt:'side'}, prog:Object.assign({}, ACC, {bed:'bed160'}), site:{entry:'ramp', rise:450}},
+  ]},
+  {title:'Signature homes, three modules', note:'All 24.9 m², two outlines with different room layouts.', items:[
     {name:'Bath strip, bed by the glass', shape:SHAPE_A, hints:{bathWing:'left', bedEnd:'top', kitchenIn:'wing'}, prog:{bathing:'bath'}},
     {name:'Bed at the far end', shape:SHAPE_A, hints:{bathWing:'left', bedEnd:'bottom', kitchenIn:'wing'}, prog:{bathing:'bath'}},
     {name:'Kitchen at the entrance', shape:SHAPE_A, hints:{bathWing:'left', bedEnd:'bottom', kitchenIn:'central'}, prog:{bathing:'shower', desk:true, dining:false, shoe:false}},
@@ -408,10 +444,14 @@ const PRESETS = PRESET_GROUPS.flatMap(g => g.items);
 function applyPreset(p) {
   const shape = JSON.stringify(typeof p.shape === 'function' ? p.shape() : p.shape);
   const base = Object.assign(defaultState().program, p.prog || {});
-  const misses = () => readyForTwo().filter(x => !x.ok).length * 10 + (S.unplaced || []).filter(t => ['kitchen', 'toilet', 'wc', 'basin', 'shower', 'bath', 'ofuro'].concat(BED_TYPES).includes(t)).length * 30;
-  const progs = [base, Object.assign({}, base, {desk:false}), Object.assign({}, base, {desk:false, bathing:'shower'}), Object.assign({}, base, {desk:false, bathing:'shower', kitchen:Math.min(base.kitchen, 1500)})];
+  const misses = () => { const g = buildGeo(S.shape), v = validate(g);
+    return readyForTwo().filter(x => !x.ok).length * 10
+      + (S.unplaced || []).filter(t => ['kitchen', 'toilet', 'wc', 'basin', 'shower', 'bath', 'ofuro', 'accshower', 'acctoilet', 'accbasin'].concat(BED_TYPES).includes(t)).length * 30
+      + Object.values(v.items).filter(x => x.length).length * 15 + Object.values(v.ops).filter(x => x.length).length * 15
+      + v.checks.filter(c => c.state !== 'ok' && !/wide-load|limit|faces|No room found|Ready for two/i.test(c.text)).length * 7; };
+  const progs = p.fixed ? [base, Object.assign({}, base, {desk:false}), Object.assign({}, base, {desk:false, kitchen:Math.min(base.kitchen, 1500)})] : [base, Object.assign({}, base, {desk:false}), Object.assign({}, base, {desk:false, bathing:'shower'}), Object.assign({}, base, {desk:false, bathing:'shower', kitchen:Math.min(base.kitchen, 1500)})];
   const hintsList = [p.hints];
-  ['left', 'right', 'end'].forEach(bw => ['wing', 'central', 'bathwing'].forEach(ki => ['auto', 'side'].forEach(dr => {
+  if (!p.fixed) ['left', 'right', 'end'].forEach(bw => ['wing', 'central', 'bathwing'].forEach(ki => ['auto', 'side'].forEach(dr => {
     if (ki === 'bathwing' && bw === 'end') return;
     const h = Object.assign({}, p.hints, {bathWing:bw, kitchenIn:ki, doorAt:dr});
     if (JSON.stringify(h) !== JSON.stringify(Object.assign({doorAt:'auto'}, p.hints))) hintsList.push(h); })));
@@ -425,5 +465,6 @@ function applyPreset(p) {
     if (sc === 0) break;
   }
   S = Object.assign(S, JSON.parse(best.st));
+  if (p.site) Object.assign(S.site, p.site);
   return failedBest;
 }

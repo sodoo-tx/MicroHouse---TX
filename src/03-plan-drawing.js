@@ -45,7 +45,15 @@ function symbol(it) {
   const R = (x, y, ww, hh, cls = 'sym', rx = 0) => `<rect class="${cls}" x="${f1(x)}" y="${f1(y)}" width="${f1(ww)}" height="${f1(hh)}" rx="${rx}"/>`;
   const C = (x, y, r, cls = 'sym') => `<circle class="${cls}" cx="${f1(x)}" cy="${f1(y)}" r="${f1(r)}"/>`;
   const Ln = (a, b, c, e) => `<line class="sym" x1="${f1(a)}" y1="${f1(b)}" x2="${f1(c)}" y2="${f1(e)}"/>`;
-  if (t === 'tatamibed') {
+  if (t === 'accshower') {
+    s += Ln(x0 + 60, y0 + d - 60, x0 + w - 60, y0 + d - 60) + R(x0 + 40, y0 + 40, 420, 380, 'sym', 20) + C(0, 0, 45, 'symf');
+    s += `<circle class="sym" cx="0" cy="0" r="${f1(Math.min(w, d) / 2 - 30)}" style="stroke-dasharray:8 8"/>`;
+  } else if (t === 'acctoilet') {
+    s += R(-140, y0, 280, 170) + `<ellipse class="sym" cx="0" cy="${f1(y0 + 170 + (d - 190) / 2)}" rx="160" ry="${f1((d - 190) / 2)}"/>`;
+    s += Ln(x0 + 20, y0 + 80, x0 + 20, y0 + d - 40) + Ln(x0 + w - 20, y0 + 80, x0 + w - 20, y0 + d - 40);
+  } else if (t === 'accbasin') {
+    s += `<ellipse class="sym" cx="0" cy="${f1(y0 + d/2)}" rx="${f1(w/2 - 70)}" ry="${f1(d/2 - 70)}"/>` + `<line class="sym" x1="${f1(x0)}" y1="${f1(y0 + d + 60)}" x2="${f1(x0 + w)}" y2="${f1(y0 + d + 60)}" style="stroke-dasharray:6 6"/>`;
+  } else if (t === 'tatamibed') {
     s += Ln(x0, y0 + d/2, x0 + w, y0 + d/2) + Ln(0, y0, 0, y0 + d/2) + Ln(0, y0 + d/2, 0, y0 + d - 220);
     s += R(x0 + 80, y0 + 70, w/2 - 120, 300, 'sym', 50) + R(40, y0 + 70, w/2 - 120, 300, 'sym', 50);
     s += Ln(x0, y0 + d - 220, x0 + w, y0 + d - 220) + Ln(x0 + w/3, y0 + d - 220, x0 + w/3, y0 + d) + Ln(x0 + 2*w/3, y0 + d - 220, x0 + 2*w/3, y0 + d);
@@ -54,6 +62,8 @@ function symbol(it) {
   } else if (t === 'jang') {
     for (let i = 1; i < 3; i++) s += Ln(x0 + i * w/3, y0 + 20, x0 + i * w/3, y0 + d);
     for (let i = 0; i < 3; i++) s += C(x0 + (i + .5) * w/3, y0 + d - 70, 22, 'symf');
+  } else if (t === 'shoeslim') {
+    s += Ln(x0 + w/2, y0 + 20, x0 + w/2, y0 + d) + C(x0 + w/4, y0 + d - 50, 18, 'symf') + C(x0 + 3*w/4, y0 + d - 50, 18, 'symf');
   } else if (t === 'getabako' || t === 'pantry' || t === 'cleaning') {
     for (let i = 1; i < 4; i++) s += Ln(x0 + 30, y0 + i * d/4, x0 + w - 30, y0 + i * d/4);
     if (t === 'cleaning') s += Ln(x0 + 60, y0 + d - 60, x0 + w - 60, y0 + 60);
@@ -103,6 +113,7 @@ function symbol(it) {
     s += R(clamp(sx - 220, x0 + 20, x0 + w - 460), y0 + 90, 440, 380, 'sym', 50) + C(clamp(sx, x0 + 240, x0 + w - 240), y0 + 280, 45);
     const hx = clamp(cx, x0 + 300, x0 + w - 300);
     s += R(hx - 280, y0 + 60, 560, 480, 'sym', 20) + C(hx - 130, y0 + 300, 95) + C(hx + 130, y0 + 300, 95);
+    if (o.knee) s += `<rect class="sym" x="${f1(clamp(sx - 400, x0 + 10, x0 + w - 810))}" y="${f1(y0 + 10)}" width="800" height="${f1(d - 20)}" style="stroke-dasharray:4 6"/>`;
     if (o.pullout) s += `<rect class="sym" x="${f1(x0 + w/2 - 350)}" y="${f1(y0 + d)}" width="700" height="600" style="stroke-dasharray:10 7"/>`;
     if (o.washer) { const wx = clamp(x0 + w * (sx > 0 ? .5 : .5) - 300, x0 + 10, x0 + w - 610); s += C(wx + 300, y0 + 300, 190) + `<text class="it-label" x="${f1(wx + 300)}" y="${f1(y0 + 340)}" text-anchor="middle">W</text>`; }
     if (o.fridge) { const fx = (sx > 0 ? x0 + 20 : x0 + w - 620); s += R(clamp(fx, x0 + 10, x0 + w - 610), y0 + 30, 590, 520, 'sym', 0) + `<text class="it-label" x="${f1(clamp(fx, x0 + 10, x0 + w - 610) + 295)}" y="${f1(y0 + 330)}" text-anchor="middle">F</text>`; }
