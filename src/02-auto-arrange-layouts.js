@@ -113,6 +113,7 @@ function programItems() {
   if (p.divider) list.push('divider');
   if (p.stove) list.push('stove');
   if (p.shelf) list.push('shelf');
+  if (p.wallstore) list.push('wallstore');
   if (p.dryrack && !p.washer) list.push('dryrack');
   return list;
 }
@@ -320,7 +321,7 @@ function arrangeOnce(mode, kitFirst) {
   if (washerToKitchen) { const k = S.items.find(i => i.type === 'kitchen'); if (k) { k.opt = Object.assign({}, k.opt, {washer:true}); } else failed.push('washer'); }
   const bed = S.items.find(i => CAT[i.type].zone === 'bed');
   const kitItem = () => S.items.find(i => i.type === 'kitchen');
-  ['energy', 'nook', 'kotatsu', 'soban', 'dining', 'sofa', 'sofabed', 'wardrobe', 'oshiire', 'jang', 'getabako', 'shoe', 'cleaning', 'pantry', 'desk', 'bins', 'nightstand', 'divider', 'stove', 'shelf'].filter(t => want.includes(t)).forEach(t => {
+  ['energy', 'nook', 'kotatsu', 'soban', 'dining', 'sofa', 'sofabed', 'wallstore', 'wardrobe', 'oshiire', 'jang', 'getabako', 'shoe', 'cleaning', 'pantry', 'desk', 'bins', 'nightstand', 'divider', 'stove', 'shelf'].filter(t => want.includes(t)).forEach(t => {
     let zs = dryZones, sc;
     if (t === 'wardrobe' || t === 'shelf' || t === 'oshiire' || t === 'jang' || t === 'divider') sc = it => (bed ? dist([it.x, it.y], [bed.x, bed.y]) : 0) + (t === 'shelf' ? 600 : 0);
     else if (t === 'nightstand') sc = it => bed ? dist([it.x, it.y], [bed.x, bed.y]) - (dist([it.x, it.y], [bed.x, bed.y]) < bed.w / 2 + 500 ? 800 : 0) : 0;
@@ -425,6 +426,7 @@ const H2M = {bathWing:'end', bathScope:'central', bedEnd:'bottom', kitchenIn:'ce
 const PRESET_GROUPS = [
   {title:'Our home: two modules, 24.94 m²', note:'Our main design, as in our render: a 16.12 m² and an 8.82 m² module, one outside door, a raised sleeping platform with storage, gable steel roof. Add a second door from Furnish to link another module.', items:[
     {name:'Our home, as rendered', main:true, fixed:true, shape:SHAPE_2M, hints:Object.assign({}, H2M, {bathDepth:1250}), prog:MAIN_PROG, site:{entry:'steps', rise:740, north:0}},
+    {name:'Our home with daybed, storage wall, shutters and window seat', fixed:true, shape:SHAPE_2M, hints:Object.assign({}, H2M, {bathDepth:1250}), prog:Object.assign({}, MAIN_PROG, {bed:'daybed', wallstore:true, dining:true}), site:{entry:'steps', rise:740, north:0}, ideas:{shutters:true, bay:true}},
     {name:'Wheelchair-accessible version', fixed:true, shape:SHAPE_2M, hints:Object.assign({}, H2M, {bathDepth:2300, bathDoorAt:.65}), prog:Object.assign({}, ACC, {bed:'wallbed', kitchen:1500}), site:{entry:'ramp', rise:450, north:0}},
     {name:'Small + small + big, 33.76 m²', shape:() => ({Wc:2100, L:4200, wallT:250, roof:'gable', left:SMALLM(0, 4200), right:BIGM(-1000, 4200)}), hints:{bathWing:'right', bedEnd:'bottom', kitchenIn:'central', doorAt:'side'}, prog:{bed:'platformbed', sofa:'sofa', dining:true}},
     {name:'Small + big + small, 33.76 m²', shape:() => ({Wc:3100, L:5200, wallT:250, roof:'gable', left:SMALLM(1000, 5200), right:SMALLM(1000, 5200)}), hints:{bathWing:'end', bathScope:'central', bedEnd:'bottom', kitchenIn:'wing', doorAt:'side'}, prog:{bed:'bed160', sofa:'sofa', dining:true}},
@@ -485,5 +487,6 @@ function applyPreset(p) {
   }
   S = Object.assign(S, JSON.parse(best.st));
   if (p.site) Object.assign(S.site, p.site);
+  if (p.ideas) S.spec.ideas = Object.assign({}, p.ideas);
   return failedBest;
 }

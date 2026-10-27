@@ -561,6 +561,53 @@ body.mode-site::before{content:""; position:fixed; inset:0 0 auto; height:env(sa
 .cl-card{padding:16px}
 .cl-home{animation:popIn .45s cubic-bezier(.2,.8,.2,1) both; animation-delay:calc(var(--i) * 70ms)}
 @media (prefers-reduced-motion: reduce){ .cl-home{animation:none} }
+.idea{border:1px solid var(--line); border-radius:12px; padding:10px 12px; margin:0 0 8px; background:var(--sheet); transition:border-color .2s, background .2s}
+.idea.on{border-color:var(--act); background:color-mix(in srgb, var(--act) 6%, var(--sheet))}
+.idea-t{font-weight:700; font-size:14.5px; display:flex; justify-content:space-between; gap:8px}
+.idea-p{font-weight:600; color:var(--ink-2); font-size:13px; white-space:nowrap}
+.idea p{margin:4px 0 8px; color:var(--ink-2); font-size:13px}
+.idea-bay{fill:color-mix(in srgb, var(--wool) 40%, transparent); stroke:var(--ink); stroke-width:20}
+.idea-shutter{fill:color-mix(in srgb, var(--act) 10%, transparent); stroke:var(--act); stroke-width:14; stroke-dasharray:30 20}
+.idea-screen{stroke:#8A6440; stroke-width:60; stroke-dasharray:20 40}
+.idea-deck{fill:color-mix(in srgb, #9B7A55 25%, transparent); stroke:#9B7A55; stroke-width:12}
+.idea-wing{fill:color-mix(in srgb, #E8743B 18%, transparent); stroke:#E8743B; stroke-width:16; stroke-dasharray:28 14}
+.idea-trundle{fill:none; stroke:var(--ink); stroke-width:14; stroke-dasharray:24 16}
+.idea-trellis{stroke:#5E8C4A; stroke-width:40; stroke-dasharray:6 120; stroke-linecap:round}
+
+/* ---------- studio gallery ---------- */
+.studio{background:#0F1517; color:#EEF2EF; padding:72px 0 64px; margin-top:40px; overflow:hidden; position:relative}
+.studio .eyebrow{color:#9FB0AD}
+.studio h2{font-stretch:112%; font-weight:800; font-size:clamp(28px, 3.4vw, 44px); letter-spacing:-.02em; margin:0}
+.studio-head{max-width:var(--max); margin:0 auto 30px; padding:0 20px; display:flex; justify-content:space-between; align-items:flex-end; gap:20px}
+.studio-count{font:800 15px Archivo, Arial, sans-serif; font-variant-numeric:tabular-nums; color:var(--wool); letter-spacing:.06em}
+.studio-track{display:flex; gap:32px; padding:0 max(20px, calc((100vw - var(--max)) / 2)); width:max-content; will-change:transform}
+.st-card{flex:0 0 auto; width:min(58vw, 760px); cursor:zoom-in; margin:0}
+.st-frame{position:relative; overflow:hidden; border-radius:16px; background:#F4F5F2; aspect-ratio:16/10}
+.st-frame img{position:absolute; inset:-6% -6%; width:112%; height:112%; object-fit:contain; will-change:transform}
+.st-cap{display:flex; gap:14px; align-items:baseline; margin-top:14px; overflow:hidden}
+.st-num{font:800 13px Archivo, Arial, sans-serif; color:var(--wool); letter-spacing:.08em}
+.st-cap b{font-size:20px; font-stretch:112%; white-space:nowrap}
+.st-cap span.c{color:#A9B5B3; font-size:14.5px}
+.studio-prog{height:2px; background:#26302F; max-width:var(--max); margin:28px auto 0; position:relative}
+.studio-prog i{position:absolute; inset:0; background:var(--wool); transform-origin:left; transform:scaleX(0)}
+.cursor-dot{position:fixed; left:0; top:0; width:86px; height:86px; margin:-43px 0 0 -43px; border-radius:50%; background:var(--wool); color:#141A1C; display:grid; place-items:center; font:800 12.5px Archivo, Arial, sans-serif; letter-spacing:.06em; text-transform:uppercase; pointer-events:none; z-index:60; transform:scale(0); mix-blend-mode:normal}
+.lightbox{border:0; padding:14px; background:#0F1517; color:#EEF2EF; border-radius:16px; max-width:min(1100px, 94vw); width:auto}
+.lightbox::backdrop{background:rgba(8,12,13,.82); backdrop-filter:blur(4px)}
+.lightbox img{display:block; max-width:100%; max-height:76vh; border-radius:10px; background:#F4F5F2; margin:0 auto}
+.lightbox .btn{background:#EEF2EF; color:#141A1C; border-color:#EEF2EF}
+.lightbox p{margin:10px 2px; color:#C9D2D0}
+.lightbox[open]{animation:lbIn .45s cubic-bezier(.2,.8,.2,1)}
+@keyframes lbIn{from{opacity:0; transform:scale(.92)} to{opacity:1; transform:none}}
+.scroll-cue{display:flex; align-items:center; gap:10px; margin-top:22px; color:var(--ink-2); font-size:12px; letter-spacing:.12em; text-transform:uppercase}
+.scroll-cue i{position:relative; width:22px; height:34px; border:2px solid currentColor; border-radius:12px}
+.scroll-cue i::after{content:""; position:absolute; left:50%; top:6px; width:4px; height:7px; margin-left:-2px; border-radius:2px; background:currentColor; animation:cue 1.6s cubic-bezier(.6,0,.4,1) infinite}
+@keyframes cue{0%{opacity:0; transform:translateY(-3px)} 30%{opacity:1} 80%{opacity:0; transform:translateY(10px)} 100%{opacity:0}}
+@media (max-width:980px){
+  .studio-track{flex-direction:column; width:auto; gap:34px}
+  .st-card{width:100%}
+  .studio-prog, .studio-count{display:none}
+}
+@media (prefers-reduced-motion: reduce){ .scroll-cue i::after{animation:none} }
 </style>
 </head>
 <body class="mode-site">
@@ -578,6 +625,7 @@ body.mode-site::before{content:""; position:fixed; inset:0 0 auto; height:env(sa
       <p class="lead2">Two modules on a 5.2 × 5.2 m footprint, one front door, a raised sleeping platform full of storage and a lofty gable steel roof. Design yours and watch the 3D model and price update as you go. Solar power, rainwater and fresh air are built in.</p>
       <div class="hero-cta"><button class="btn primary big-btn" data-open-app>Design your home</button><button class="btn big-btn" data-go="homes">See the homes</button></div>
       <p class="from" id="heroFrom">Estimated from <b>…</b>, factory-direct</p>
+      <div class="scroll-cue" aria-hidden="true"><i></i><span>Scroll</span></div>
       <p class="resume" id="heroResume" hidden><button class="linkbtn" data-open-app>Continue your saved design →</button></p>
     </div>
     <div class="hero-art-wrap"><div class="hero-art" aria-hidden="true"><div class="hero-plan" id="heroPlan"></div><div class="hero-tag" id="heroTag"></div></div>
@@ -592,6 +640,11 @@ body.mode-site::before{content:""; position:fixed; inset:0 0 auto; height:env(sa
     <div><b>Off-grid</b><span>solar, battery and rainwater included</span></div>
   </section>
   <div class="ticker" aria-hidden="true"><div class="tk-track"><span>Galvanized steel frame</span><span>Rockwool insulation</span><span>Roof solar</span><span>LiFePO4 battery</span><span>Rainwater cistern</span><span>Greywater planter</span><span>Heat-recovery fresh air</span><span>Screw-pile foundations</span><span>Two trucks, one day</span><span>Galvanized steel frame</span><span>Rockwool insulation</span><span>Roof solar</span><span>LiFePO4 battery</span><span>Rainwater cistern</span><span>Greywater planter</span><span>Heat-recovery fresh air</span><span>Screw-pile foundations</span><span>Two trucks, one day</span></div></div>
+  <section class="studio" id="s-studio" aria-label="From our studio">
+    <div class="studio-head"><div><p class="eyebrow">From our studio</p><h2>Drawn, framed, tested</h2></div><div class="studio-count" id="studioCount">01 / 08</div></div>
+    <div class="studio-pin"><div class="studio-track" id="studioTrack"></div></div>
+    <div class="studio-prog" aria-hidden="true"><i id="studioProg"></i></div>
+  </section>
   <section class="asm" id="s-build" aria-label="From factory to site">
     <div class="asm-stage">
       <div class="asm-copy">
@@ -731,6 +784,8 @@ body.mode-site::before{content:""; position:fixed; inset:0 0 auto; height:env(sa
 </div>
 
 </div>
+<div id="cursorDot" class="cursor-dot" aria-hidden="true">Scroll</div>
+<dialog id="lightbox" class="lightbox" aria-label="Image"><img id="lbImg" alt=""><p id="lbCap"></p><button class="btn" data-lb="close">Close</button></dialog>
 <div id="wipe" class="wipe" aria-hidden="true"><svg viewBox="0 0 32 32" width="64" height="64"><path d="M4 9 9 4h14v10l5 4v10H11v-8H4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M11 14h12" stroke="#E3AE1F" stroke-width="2"/></svg></div>
 <div id="printSheet" class="print-sheet" aria-hidden="true"></div>
 <nav class="mobile-nav" id="mnav" aria-label="Views">
@@ -752,6 +807,7 @@ window.MICROHOME_CONFIG = {
 };
 </script>
 <script>window.__MH_THUMBS=/*__THUMBS__*/null;</script>
+<script>window.__MH_GALLERY=/*__GALLERY__*/null;</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
 <script>

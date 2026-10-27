@@ -8,6 +8,7 @@ It is a single static page. There is no server, no database and no sign-up. Desi
 
 - **Main design, as in our render:** a 16.12 m² module (3.1 × 5.2 m) and an 8.82 m² module (2.1 × 4.2 m), 24.94 m² on a 5.2 × 5.2 m footprint. One outside door (a second door can be added to link another module), a raised sleeping platform with storage, gable steel roof. A wheelchair-accessible version and bigger combinations up to 41.06 m² are options.
 
+- **Ideas tab**: 8 picks (Kingspan QuadCore panels, extendable daybed, full-height storage wall, pull-out guest bed under the platform, lift-up shading shutters, small wind turbine, covered pergola terrace, Kingspan Slimline tank) and 30 more ideas grouped by furniture, outside and climate, energy and water, and concepts. Each updates the plan, 3D view, energy, water and price.
 - **Cluster planner**: interlock 2 to 8 copies of any design into a neighbourhood, with doors kept open to the outside, shared-wall length, site size and total price.
 - **Landing page** with an animated hero, a factory-to-site assembly animation, the signature homes, features, specifications and questions.
 - **Designer** where people pick a plan, change the shape, move doors, windows and furniture, and see the 3D model and price update.
@@ -57,6 +58,7 @@ The page is built from the files in `src/`:
 | `04-ui-3d-site.js` | Panels, 3D view, smart menu, quote form, landing page and its animations |
 | `template.html` | Page markup and styles |
 | `layouts.json` | Pre-computed preset layouts, so the site loads instantly |
+| `gallery.json` | Your studio renders for the landing page gallery, compressed WebP |
 
 After editing, rebuild `index.html`:
 

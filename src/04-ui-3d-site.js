@@ -122,6 +122,7 @@ const TABS = [
   ['furnish', 'Furnish', '<path d="M4 12V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4"/><path d="M3 12h18v5H3zM5 17v3M19 17v3"/>'],
   ['systems', 'Energy and water', '<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>'],
   ['finishes', 'Finishes', '<path d="M4 4h16v6H4zM12 10v4M9 14h6v7H9z"/>'],
+  ['ideas', 'Ideas', '<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/>'],
   ['cluster', 'Cluster', '<rect x="3" y="3" width="8" height="10"/><rect x="13" y="7" width="8" height="10"/><rect x="6" y="15" width="8" height="6"/>'],
   ['prices', 'Prices', '<path d="M12 2v20M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>'],
 ];
@@ -141,15 +142,27 @@ function renderPanel() {
   const p = $('#panel'); let h = '';
   const fresh = G.lastTab !== G.tab; G.lastTab = G.tab;
   const t = G.tab;
+  if (t === 'ideas') {
+    h += `<h2>Ideas</h2><p class="lead">Ideas from our reference images, sorted for a 25 m² off-grid home. Our picks first, then more to try. Each one updates the plan, the 3D view and the price.</p>`;
+    const card = it => { const on = it.kind === 'info' ? null : ideaOn(it.k);
+      return `<div class="idea${on ? ' on' : ''}"><div class="idea-t">${esc(it.t)}${it.kind === 'item' || it.kind === 'feature' ? `<span class="idea-p">${ideaPrice(it.k)}</span>` : ''}</div><p>${esc(it.d)}</p>${it.kind === 'info' ? '' : `<button class="btn small${on ? '' : ' primary'}" data-idea="${it.k}">${it.kind === 'link' ? 'Open Cluster' : on ? 'Remove' : 'Add'}</button>`}</div>`; };
+    h += `<h3>Our picks</h3>` + IDEAS.filter(x => x.main).map(card).join('');
+    [['Furniture', 'More ideas: furniture and storage'], ['Outside', 'More ideas: outside and climate'], ['Energy', 'More ideas: energy and water'], ['Build', 'More ideas: Kingspan building products'], ['Concepts', 'Concepts and links']].forEach(([g, title]) => { const L = IDEAS.filter(x => !x.main && x.g === g); if (L.length) h += `<h3>${title}</h3>` + L.map(card).join(''); });
+  }
   if (t === 'cluster') {
     const n = G.clusterN || 6;
     h += `<h2>Cluster</h2><p class="lead">Interlock several homes into a neighbourhood. Each home is complete on its own; rotated and mirrored copies fit into each other’s steps and share walls.</p>`;
     h += `<div class="field stack"><label>Homes</label><div class="seg">${[2, 3, 4, 6, 8].map(k => `<button data-cl="${k}" aria-pressed="${k === n}">${k}</button>`).join('')}</div></div>`;
     const cl = clusterLayout(S, n), cs = clusterStats(S, cl);
     G.cluster = cl;
+    const ns = G.storeys || 1;
+    h += `<div class="field stack"><label>Storeys</label><div class="seg">${[1, 2, 3, 4].map(k => `<button data-st="${k}" aria-pressed="${k === ns}">${k}</button>`).join('')}</div></div>`;
+    if (ns > 1) { const keep = S.spec.frame; S.spec.frame = 'stack'; const up = costs(cl.geo).total - cs.unit; S.spec.frame = keep;
+      cs.stackUp = up; cs.n2 = cs.n * ns; cs.stairs = (ns - 1) * Math.ceil(cs.n / 3) * 3500; cs.total2 = (cs.unit + up) * cs.n2 - cs.save + cs.stairs; }
     h += `<div class="cl-view" id="clView">${clusterSVG(S, cl)}</div>`;
     h += `<p><button class="btn" data-act="clbig">View large</button></p>`;
     h += `<table class="ptable"><tr><td>Homes</td><td>${cs.n}${cs.n < n ? ` (only ${cs.n} fit snugly)` : ''}</td></tr><tr><td>Total floor area</td><td>${cs.area.toFixed(1)} m²</td></tr><tr><td>Site needed, at least</td><td>${cs.site.toFixed(0)} m²</td></tr><tr><td>Walls touching a neighbour</td><td>${cs.shared.toFixed(1)} m</td></tr><tr><td>Price per home</td><td>${money(cs.unit)}</td></tr><tr><td>Shared crane and crew</td><td>−${money(cs.save)}</td></tr><tr><td><b>All ${cs.n} homes</b></td><td><b>${money(cs.total)}</b></td></tr></table>`;
+    if (ns > 1) h += `<table class="ptable"><tr><td>Storeys</td><td>${ns}</td></tr><tr><td>Homes in total</td><td>${cs.n2}</td></tr><tr><td>Floor area</td><td>${(cs.area * ns).toFixed(0)} m²</td></tr><tr><td>Stackable frame, per home</td><td>+${money(cs.stackUp)}</td></tr><tr><td>Outside stairs and walkways</td><td>${money(cs.stairs)}</td></tr><tr><td><b>All ${cs.n2} homes</b></td><td><b>${money(cs.total2)}</b></td></tr></table><p class="note">Upper homes need the stackable 4-storey frame, outside stairs and walkways, and a structural engineer’s check for the foundations.</p>`;
     h += `<p class="note">Uses your current design. Each home keeps its own walls, so homes can be sold, moved or added later. Touching walls cut wind and heat loss.</p>`;
   }
   if (t === 'layouts') {
@@ -263,9 +276,9 @@ function renderPanel() {
     h += rng('Battery', 'sys.batt', 0, 25, 2.5, ' kWh');
     h += rng('People', 'sys.people', 1, 4, 1, '');
     h += rng('Sun, average hours a day', 'sys.sun', 1.5, 7, .5, ' h');
-    h += gauge('Solar against daily use', og.pv, og.kwh, `${og.pv.toFixed(1)} of ${og.kwh.toFixed(1)} kWh a day`);
+    h += gauge(og.wind ? 'Solar and wind against daily use' : 'Solar against daily use', og.pv, og.kwh, `${og.pv.toFixed(1)} of ${og.kwh.toFixed(1)} kWh a day${og.wind ? `, ${og.wind.toFixed(1)} from wind` : ''}`);
     h += gauge('Days on battery alone', og.days, 2, `${og.days.toFixed(1)} days, aim for 2`);
-    if (og.winter) h += `<p class="note">Winter heating with the heat pump adds about ${og.winter} kWh a day. Plan a backup, such as a wood stove, for long cloudy spells.</p>`;
+    if (og.winter) h += `<p class="note">Winter heating adds about ${og.winter.toFixed(1)} kWh a day${(S.spec.ideas || {}).quadcore ? ', already 30% less with QuadCore panels' : ''}. Plan a backup, such as a wood stove, for long cloudy spells.</p>`;
     h += `<h3>Water</h3>`;
     h += chk('Water tank under the bed', 'sys.tank');
     if (S.sys.tank) h += rng('Tank size', 'sys.tankL', 300, 1200, 50, ' L');
@@ -415,6 +428,8 @@ function initPanel() {
     if (b.dataset.add) { addItem(b.dataset.add); return; }
     if (b.dataset.addop) { addOpening(b.dataset.addop); return; }
     if (b.dataset.selop) { select({kind:'op', id:b.dataset.selop}); return; }
+    if (b.dataset.idea) { toggleIdea(b.dataset.idea); renderPanel(); return; }
+    if (b.dataset.st) { G.storeys = +b.dataset.st; renderPanel(); return; }
     if (b.dataset.cl) { G.clusterN = +b.dataset.cl; renderPanel(); return; }
     if (b.dataset.act === 'clbig') { const d = $('#dlg'); d.innerHTML = `<h3>${G.cluster.homes.length} homes interlocked</h3><div class="cl-view big">${clusterSVG(S, G.cluster)}</div><p><button class="btn primary" data-d="close">Close</button></p>`; if (!d.open) d.showModal(); return; }
     if (b.dataset.plevel) { snapshot(); const k = +b.dataset.plevel, d = defaultState(); Object.keys(d.prices).forEach(p => S.prices[p] = p === 'contingency' ? d.prices[p] : Math.round(d.prices[p] * k * 100) / 100); Object.keys(d.iprices).forEach(p => S.iprices[p] = Math.round(d.iprices[p] * k)); commit(true); toast('Prices set to ' + b.textContent.toLowerCase()); return; }
@@ -684,7 +699,7 @@ function build3D() {
   const box = (w, h, d, x, y, z, ry, m, parent = root) => { const me = new THREE.Mesh(V3.unit, m); me.scale.set(Math.max(w, .001), Math.max(h, .001), Math.max(d, .001)); me.position.set(x, y, z); me.rotation.y = ry || 0; parent.add(me); return me; };
   // ground
   const cxm = (geo.bbox[0]+geo.bbox[2])/2000, czm = (geo.bbox[1]+geo.bbox[3])/2000;
-  const gnd = new THREE.Mesh(new THREE.CircleGeometry(9, 64), mat(dark ? 0x26302C : 0xC9D1C6)); gnd.rotation.x = -Math.PI / 2; gnd.position.set(cxm, -.5, czm); root.add(gnd);
+  const gnd = new THREE.Mesh(new THREE.CircleGeometry(9, 64), mat(dark ? 0x26302C : 0xC9D1C6)); gnd.rotation.x = -Math.PI / 2; gnd.position.set(cxm, (S.spec.ideas && S.spec.ideas.stilts) ? -2.4 : -.5, czm); root.add(gnd);
   { const nv = (() => { const n = (S.site.north || 0) * Math.PI / 180; return [-Math.sin(n), -Math.cos(n)]; })();
     const rad = Math.max(geo.bbox[2] - geo.bbox[0], geo.bbox[3] - geo.bbox[1]) / 2000 + 1.4;
     const shp = new THREE.Shape([new THREE.Vector2(0, .55), new THREE.Vector2(.28, -.25), new THREE.Vector2(0, -.08), new THREE.Vector2(-.28, -.25)]);
@@ -694,7 +709,7 @@ function build3D() {
   const sh = new THREE.Mesh(new THREE.PlaneGeometry((geo.bbox[2]-geo.bbox[0])/1000 + 1.2, (geo.bbox[3]-geo.bbox[1])/1000 + 1.2), mat(0x000000, {transparent:true, opacity:dark ? .35 : .14})); sh.rotation.x = -Math.PI / 2; sh.position.set(cxm, -.49, czm); root.add(sh);
   const extrude = (poly, depth, y, m) => { const sh = new THREE.Shape(poly.map(p => new THREE.Vector2(p[0] * s, p[1] * s))); const g = new THREE.ExtrudeGeometry(sh, {depth, bevelEnabled:false}); g.rotateX(Math.PI / 2); const me = new THREE.Mesh(g, m); me.position.y = y; root.add(me); return me; };
   // piles + floors
-  pillarsOf(geo).forEach(p => { const c = new THREE.Mesh(new THREE.CylinderGeometry(.06, .06, .5, 10), mat(0x777777)); c.position.set(p.p[0]*s, -.25, p.p[1]*s); root.add(c); });
+  { const hp = (S.spec.ideas && S.spec.ideas.stilts) ? 2.4 : .5; pillarsOf(geo).forEach(p => { const c = new THREE.Mesh(new THREE.CylinderGeometry(hp > 1 ? .09 : .06, hp > 1 ? .09 : .06, hp, 10), mat(0x777777)); c.position.set(p.p[0]*s, -hp / 2, p.p[1]*s); root.add(c); }); }
   geo.mods.forEach(m => extrude(m.poly, FLOOR_H * s, FLOOR_H * s, mat(0x3B4446)));
   geo.zones.forEach(z => extrude(z.poly, .01, FLOOR_H * s + .01, mat({ply:0xD9B98A, vinyl:0xCFC9BC, lino:0xB9A88C}[S.spec.finish])));
   // walls
@@ -733,6 +748,35 @@ function build3D() {
       box(1.5, .06, 1.5, land[0] * s, FLOOR_H * s - .04, land[1] * s, Math.atan2(-u[1], u[0]), mat(0x9AA3A6));
       const rl = L2 - 1.5, ctr = add(add(m0, mul(out, 1500 + 600)), mul(dir, rl * 500)), g = new THREE.Mesh(V3.unit, mat(0x9AA3A6));
       g.scale.set(rl, .06, 1.2); g.position.set(ctr[0] * s, FLOOR_H * s - rise / 2 - .02, ctr[1] * s); g.rotation.order = 'YXZ'; g.rotation.y = Math.atan2(-dir[1], dir[0]); g.rotation.z = -Math.atan(rise / rl); root.add(g); } }
+  { const I = S.spec.ideas || {}, ops3 = S.openings.map(op => ({op, f:opFrame(geo, op)})).filter(x => x.f), glass3 = ops3.filter(x => OPN[x.op.type].kind !== 'door').sort((a, b) => b.op.w - a.op.w), Y = y => (FLOOR_H + y) * s;
+    const along = (x, k) => add(x.f.a, mul(sub(x.f.b, x.f.a), k)), outN = x => mul(x.f.e.n, -1), ang = x => Math.atan2(-x.f.e.u[1], x.f.e.u[0]);
+    if (I.shutters) glass3.forEach(x => { const m = along(x, .5), n = outN(x), w = x.op.w / 1000, top = x.op.sill + x.op.h + 60; const g = new THREE.Mesh(V3.unit, mat(0xF4F1E8, {transparent:true, opacity:.82}));
+      g.scale.set(w + .1, .03, .9); const c = add(m, mul(n, 450)); g.position.set(c[0] * s, Y(top) - .26, c[1] * s); g.rotation.order = 'YXZ'; g.rotation.y = ang(x); g.rotation.x = -.55 * Math.sign(n[1] || n[0] || 1) * 0; g.rotateX(.55); root.add(g); });
+    if (I.bay && glass3[0]) { const x = glass3[0], n = outN(x), m = along(x, .5), c = add(m, mul(n, 250)), w = x.op.w / 1000 + .2;
+      box(w, .12, .55, c[0] * s, Y(x.op.sill) - .06, c[1] * s, ang(x), mat(0x9AA0A3)); box(w, .12, .55, c[0] * s, Y(x.op.sill + x.op.h) + .06, c[1] * s, ang(x), mat(0x9AA0A3));
+      box(w - .2, .1, .45, c[0] * s, Y(x.op.sill) + .05, c[1] * s, ang(x), mat(0xD9B55A)); }
+    if (I.trellis && glass3[0]) { const x = glass3[0], n = outN(x), L = len(sub(x.f.e.b, x.f.e.a)); for (let k = 0; k * 300 < L; k++) { const p = add(add(x.f.e.a, mul(x.f.e.u, k * 300 + 150)), mul(n, 700));
+      box(.012, (WALL_H + 300) / 1000, .012, p[0] * s, (WALL_H + 300) / 2000 - .45, p[1] * s, 0, mat(0xE8DCC2)); box(.25, .3, .18, p[0] * s, -.35, p[1] * s, 0, mat(0x5E8C4A)); } }
+    if (I.porch) { const d0 = ops3.find(x => OPN[x.op.type].kind === 'door'); if (d0) { const n = outN(d0), m = along(d0, .5), u = d0.f.e.u;
+      const dk = add(m, mul(n, 650)); box(2.0, .05, 1.3, dk[0] * s, FLOOR_H * s - .03, dk[1] * s, ang(d0), mat(0x9B7A55));
+      for (let k = -8; k <= 8; k++) { const p = add(add(m, mul(n, 1250)), mul(u, k * 110)); box(.04, 2.1, .04, p[0] * s, FLOOR_H * s + 1.05, p[1] * s, ang(d0), mat(0x8A6440)); } } }
+    if (I.spout) { const b = geo.bbox, p = [b[2] + 150, b[3] - 400]; box(.12, .1, .5, p[0] * s, (WALL_H + 150) * s, p[1] * s, 0, mat(0x5C6468)); box(.6, .35, .6, (p[0] + 400) * s, -.33, p[1] * s, 0, mat(0x8C8F86)); }
+    if (I.courtyard && glass3[0]) { const x = glass3[0], n = outN(x), c = add(along(x, .5), mul(n, 1900)); box(3.0, .04, 3.0, c[0] * s, -.47, c[1] * s, ang(x), mat(0xC9C4B8));
+      [[-1, -1], [1, -1], [-1, 1]].forEach(([a, b2]) => { const p = add(add(c, mul(x.f.e.u, a * 1100)), mul(n, b2 * 1000)); box(.5, .6, .5, p[0] * s, -.2, p[1] * s, 0, mat(0x4F7A43)); }); } }
+  { const I = S.spec.ideas || {}, ops3 = S.openings.map(op => ({op, f:opFrame(geo, op)})).filter(x => x.f), glass3 = ops3.filter(x => OPN[x.op.type].kind !== 'door').sort((a, b) => b.op.w - a.op.w), b = geo.bbox;
+    const outN = x => mul(x.f.e.n, -1), ang = x => Math.atan2(-x.f.e.u[1], x.f.e.u[0]), mid = x => mul(add(x.f.a, x.f.b), .5);
+    if (I.pergola && glass3[0]) { const x = glass3[0], n = outN(x), c = add(mid(x), mul(n, 1300)), wd = 3.0;
+      box(wd, .05, 2.4, c[0] * s, FLOOR_H * s - .03, c[1] * s, ang(x), mat(0x9B7A55));
+      [[-1, 1], [1, 1]].forEach(([a2]) => { const p = add(add(c, mul(x.f.e.u, a2 * 1450)), mul(n, 1150)); box(.09, 2.5, .09, p[0] * s, FLOOR_H * s + 1.25, p[1] * s, 0, mat(0x6F5236)); });
+      for (let k = -6; k <= 6; k++) { const p = add(c, mul(n, k * 180)); box(wd, .04, .06, p[0] * s, FLOOR_H * s + 2.5, p[1] * s, ang(x), mat(0x8A6440)); } }
+    if (I.wings) geo.ext.filter(e => e.len > 3500).sort((p, q) => q.len - p.len).slice(0, 2).forEach(e => { const n = mul(e.n, -1), m = mul(add(e.a, e.b), .5), r = Math.min(1.9, e.len / 2000 - .3), an = Math.atan2(-e.u[1], e.u[0]);
+      for (let k = 0; k < 9; k++) { const a2 = Math.PI * (k + .5) / 9, len2 = r, p = add(m, mul(add(mul(e.u, -Math.cos(a2)), mul(n, Math.sin(a2) * .75)), len2 * 500));
+        const g = new THREE.Mesh(V3.unit, mat(k % 2 ? 0xE8743B : 0xF19A5E, {transparent:true, opacity:.78, side:THREE.DoubleSide})); g.scale.set(.02, 2.2, len2); g.position.set(p[0] * s, FLOOR_H * s + 1.1, p[1] * s);
+        g.rotation.y = an + Math.PI / 2 - (a2 - Math.PI / 2); root.add(g); } });
+    if (I.slimline) { const p = [b[2] + 450, b[1] + 1400]; box(.42, 1.9, 2.2, p[0] * s, -.5 + .95, p[1] * s, 0, mat(0xB9C0C2, {metalness:.4, roughness:.4})); }
+    if (I.wind) { const p = [b[0] - 2200, b[3] + 1200]; box(.08, 6.5, .08, p[0] * s, -.5 + 3.25, p[1] * s, 0, mat(0xD6D9DA)); box(.2, .18, .5, p[0] * s, 2.8, p[1] * s, 0, mat(0xD6D9DA));
+      [0, 1, 2].forEach(k => { const g = new THREE.Mesh(V3.unit, mat(0xF2F3F3)); g.scale.set(.08, 1.1, .02); g.position.set(p[0] * s, 2.8, p[1] * s + .27); g.rotation.z = k * 2.094; g.translateY(.55); root.add(g); }); }
+    if (I.skylight) { const c = [(b[0] + b[2]) / 2, (b[1] + b[3]) / 2]; box(1.0, .12, 1.0, c[0] * s, (WALL_H + 260) * s, c[1] * s, 0, mat(0xBFE0EE, {transparent:true, opacity:.7})); } }
   // steel frame view
   if (G.frame) {
     const st = mat(0xC9562F), bl = mat(0x3D7FC0);
@@ -788,7 +832,13 @@ function itemMesh(it, box) {
   const g = new THREE.Group(), w = it.w / 1000, d = it.d / 1000, t = it.type;
   const W = mat(0xF4F3EF), wood = mat(0xC79A63), dark = mat(0x2D3234), fab = mat(0x8EA58C), bed = mat(0xE9E4DA), grey = mat(0xA9AFB0), glass = mat(0xA6D3E2, {transparent:true, opacity:.35});
   const B = (bw, bh, bd, x, y, z, m) => box(bw, bh, bd, x, y, z, 0, m, g);
-  if (t === 'platformbed') { B(w, .45, d, 0, .225, 0, mat(0x6B4A33)); B(w - .3, .18, d - .9, 0, .54, -.3, bed); [-1, 0, 1].forEach(k => B(.9, .02, .22, 0, .15 + (k + 1) * .15, d/2 - .11 - (1 - k) * .22, W)); }
+  if (t === 'daybed') { B(w, .38, d, 0, .19, 0, wood); B(w - .1, .12, d - .2, 0, .44, .05, fab); B(w, .4, .12, 0, .62, -d/2 + .06, fab); }
+  else if (t === 'loftbed') { const bw = w - .55; [[-w/2 + .05, -d/2 + .05], [-w/2 + .05, d/2 - .05], [w/2 - .6, -d/2 + .05], [w/2 - .6, d/2 - .05]].forEach(([x, z]) => B(.06, 1.6, .06, x, .8, z, wood));
+    B(bw, .2, d, -w/2 + bw/2, 1.6, 0, wood); B(bw - .1, .18, d - .1, -w/2 + bw/2, 1.79, 0, bed); B(bw - .3, .03, .6, -w/2 + bw/2, .75, -d/2 + .35, wood);
+    [0, 1, 2, 3, 4].forEach(k => B(.5, .32 * (k + 1), d / 5, w/2 - .27, .16 * (k + 1), d/2 - d/10 - k * d / 5, wood)); }
+  else if (t === 'wallstore') { B(w, 2.4, d, 0, 1.2, 0, mat(0xD8C3A0)); B(w * .2, .5, .02, 0, 1.1, d/2 + .005, mat(0x8A6B49)); }
+  else if (t === 'cart') { B(w, .04, d, 0, .88, 0, mat(0x9DB6A8)); B(w - .04, .7, d - .04, 0, .48, 0, wood); }
+  else if (t === 'platformbed') { B(w, .45, d, 0, .225, 0, mat(0x6B4A33)); B(w - .3, .18, d - .9, 0, .54, -.3, bed); [-1, 0, 1].forEach(k => B(.9, .02, .22, 0, .15 + (k + 1) * .15, d/2 - .11 - (1 - k) * .22, W)); }
   else if (t === 'accshower') { B(w, .02, d, 0, .01, 0, mat(0xC9D6DA)); B(.02, 2, d, w/2, 1, 0, glass); B(.35, .04, .35, -w/2 + .2, .47, -d/2 + .2, wood); }
   else if (t === 'acctoilet') { B(.4, .42, .5, 0, .21, .05, W); B(.4, .45, .18, 0, .5, -d/2 + .09, W); B(.03, .03, .6, -w/2 + .02, .75, 0, grey); B(.03, .03, .6, w/2 - .02, .75, 0, grey); }
   else if (t === 'accbasin') { B(w, .12, d, 0, .82, 0, W); B(w - .05, .6, .02, 0, 1.45, -d/2 + .01, glass); }
@@ -883,6 +933,84 @@ function openHelp() {
 function migrate(st) { const d = defaultState(); const out = Object.assign(d, st);
   if (st.shape) { const L = st.shape.L || 5400; out.shape = Object.assign(defaultState().shape, st.shape); out.shape.left = convWing(Object.assign({}, st.shape.left), L); out.shape.right = convWing(Object.assign({}, st.shape.right), L); } ['hints', 'program', 'spec', 'sys', 'site'].forEach(k => out[k] = Object.assign(defaultState()[k], st[k] || {})); out.prices = Object.assign(d.prices, st.prices || {}); out.iprices = Object.assign(defaultState().iprices, st.iprices || {});
   if (st.pv !== 2) { const f = defaultState(); out.prices = f.prices; out.iprices = f.iprices; out.spec = Object.assign({}, out.spec, {frame:'light', cladding:'steel', finish:'ply'}); out.pv = 2; } out.items = (st.items || []).filter(i => CAT[i.type]); out.openings = (st.openings || []).filter(o => OPN[o.type]); return out; }
+
+/* ======================= IDEAS ======================= */
+// Ideas from the reference images: the best ones are our picks, the rest are more ideas.
+const IDEAS = [
+  // our picks: the best across all reference images
+  {k:'quadcore', main:true, kind:'feature', g:'Build', t:'Kingspan QuadCore insulated panels', d:'Factory panels for walls and roof instead of the rockwool build-up. About 30% less heating energy, faster to close in, and a Kingspan product for the award.'},
+  {k:'daybed', main:true, kind:'item', g:'Furniture', t:'Extendable daybed', d:'A sofa by day that slides out into a double bed at night. Frees a whole bed footprint.'},
+  {k:'wallstore', main:true, kind:'item', g:'Furniture', t:'Full-height storage wall', d:'Floor-to-ceiling cupboards with open niches, about 1,600 L in 40 cm of depth.'},
+  {k:'trundle', main:true, kind:'feature', g:'Furniture', t:'Pull-out guest bed under the platform', d:'A bed on wheels hides under the raised sleeping platform and rolls out for a guest. Works with the platform bed.'},
+  {k:'shutters', main:true, kind:'feature', g:'Outside', t:'Lift-up shading shutters', d:'Translucent panels hinged above the glass: summer shade and breeze, closed for storms.'},
+  {k:'wind', main:true, kind:'feature', g:'Energy', t:'Small wind turbine', d:'A 1 kW turbine on a 6 m mast adds about 1.8 kWh a day on average, most in winter when solar is weakest.'},
+  {k:'pergola', main:true, kind:'feature', g:'Outside', t:'Covered pergola terrace', d:'A deck with a slatted roof outside the glass: an outdoor room for summer, shade for the glass.'},
+  {k:'wings', main:true, kind:'feature', g:'Outside', t:'Fold-out fabric wings', d:'Translucent fabric wings fold out from both long walls like a fan, adding about 8 m² of sheltered summer room, and fold flat for winter and transport.'},
+  {k:'slimline', main:true, kind:'feature', g:'Energy', t:'Kingspan Slimline 2,000 L tank', d:'A slim steel tank against the wall stores 2,000 L more rainwater, quick to install. Drain or frost-protect it in deep winter.'},
+  // furniture and storage
+  {k:'loftbed', kind:'item', g:'Furniture', t:'Loft bed over a desk', d:'Bed up under the gable, desk and shelves below, drawer stairs. Needs the gable roof.'},
+  {k:'shelves', kind:'feature', g:'Furniture', t:'Angled open kitchen shelves', d:'Timber shelves on diagonal brackets above the counter, about 250 L of open storage.'},
+  {k:'counterchairs', kind:'feature', g:'Furniture', t:'Chairs that slot into the counter', d:'Two slatted chairs that slide flush into the kitchen counter when not in use.'},
+  {k:'bookring', kind:'feature', g:'Furniture', t:'High bookshelf ring', d:'A shelf running above the windows around the room, about 300 L that never gets in the way.'},
+  {k:'hiddenkitchen', kind:'feature', g:'Furniture', t:'Kitchen behind folding doors', d:'The whole kitchen closes behind folding doors so the room becomes a quiet living space.'},
+  {k:'curtain', kind:'feature', g:'Furniture', t:'Curtain-enclosed bathroom', d:'A curved curtain on a ceiling track instead of a door: softer and saves the door swing.'},
+  {k:'liftbed', kind:'item', g:'Furniture', t:'Ceiling lift bed', d:'The bed rises to the ceiling by day and lowers at night, leaving the whole floor free. Needs the gable roof.'},
+  {k:'cart', kind:'item', g:'Furniture', t:'Kitchen cart on wheels', d:'Extra worktop and pantry that rolls out when cooking.'},
+  {k:'net', kind:'item', g:'Furniture', t:'Ceiling net lounge', d:'A strong net under the gable to read and lie in the light. Needs the gable roof.'},
+  // outside and climate
+  {k:'bay', kind:'feature', g:'Outside', t:'Box window seat', d:'The biggest window becomes a 50 cm deep seat projecting outside.'},
+  {k:'stilts', kind:'feature', g:'Outside', t:'Raised on tall posts', d:'The home sits about 2.4 m up; shade and storage underneath, good for slopes and floods.'},
+  {k:'porch', kind:'feature', g:'Outside', t:'Screened entrance porch', d:'A small deck at the door behind a timber slat screen.'},
+  {k:'trellis', kind:'feature', g:'Outside', t:'Rope trellis for climbing plants', d:'Vines on vertical ropes shade the glass in summer and drop their leaves for winter sun.'},
+  {k:'courtyard', kind:'feature', g:'Outside', t:'Courtyard patio', d:'About 9 m² of paving, gravel and planting outside the glass.'},
+  {k:'facade', kind:'feature', g:'Outside', t:'Layered facade', d:'Insect screen, sailcloth curtain and bamboo screen in front of the glass, each adjustable for sun, rain and privacy.'},
+  {k:'vents', kind:'feature', g:'Outside', t:'Roof stack vents', d:'Warm air leaves through two high vents and cool air comes in low: natural cooling without fans.'},
+  {k:'skylight', kind:'feature', g:'Outside', t:'Central skylight', d:'An opening skylight at the heart of the home: daylight, stars at night and summer venting.'},
+  {k:'exposed', kind:'feature', g:'Outside', t:'Exposed coloured steel', d:'Steel beams and post left visible and painted, with a display ledge on the beams.'},
+  {k:'raincollector', kind:'feature', g:'Outside', t:'Rain-collector roof', d:'Roof planes tilt to one valley that feeds the tank, catching about 10% more rain with one short gutter.'},
+  {k:'glazedroof', kind:'feature', g:'Outside', t:'Glazed roof bay with louvres', d:'A glass roof bay over the living area with movable louvres for shade. Bright, but it loses more heat in winter.'},
+  {k:'greenroof', kind:'feature', g:'Outside', t:'Sedum green roof', d:'Planted roof that cools in summer and holds stormwater. Heavy, and it halves the rainwater you can collect.'},
+  {k:'kilon', kind:'feature', g:'Outside', t:'Translucent polycarbonate wall', d:'A glowing wall section of Kilon polycarbonate by Kingspan: daylight with privacy.'},
+  {k:'fog', kind:'feature', g:'Outside', t:'Fog catcher canopy', d:'A fine mesh on the canopy collects water from fog. Only worth it in misty highlands.'},
+  // energy and water
+  {k:'powerpanel', kind:'feature', g:'Energy', t:'Kingspan QuadCore PowerPanel', d:'Roof panels with the solar built in: fewer fixings and about 8% more yield from a cooler, tidier array.'},
+  {k:'biodisc', kind:'feature', g:'Energy', t:'Kingspan BioDisc wastewater plant', d:'Treats all wastewater on site, for a flush toilet or several homes. The dry toilet makes it unnecessary for one home.'},
+  {k:'greywell', kind:'feature', g:'Energy', t:'Greywater recharge well', d:'Filtered greywater soaks back into the ground through a gravel well instead of a planter.'},
+  {k:'spout', kind:'feature', g:'Energy', t:'Concealed rain spout', d:'Roof water pours from a hidden spout into a stone basin, then to the cistern.'},
+  // building products
+  {k:'dridesign', kind:'feature', g:'Build', t:'Kingspan Dri-Design facade', d:'Precision metal cassettes on a ventilated rail: crisp, durable and quick to fix, in any colour.'},
+  {k:'greenguard', kind:'feature', g:'Build', t:'Kingspan GreenGuard XPS floor', d:'Water-resistant rigid board under the floor: about 8% less winter heating and no damp from below.'},
+  // links and concepts
+  {k:'stack', kind:'link', g:'Concepts', t:'Stack homes 2 to 4 storeys', d:'Homes stacked and offset like the block studies. Open Cluster and choose storeys; needs the stackable frame.'},
+  {k:'grow', kind:'info', g:'Concepts', t:'Grow over time', d:'Start with two modules and add a third later, upstairs or beside, for a child, a studio or a small shop. The extra door in Furnish is the connection point.'},
+  {k:'modes', kind:'info', g:'Concepts', t:'Convertible furniture', d:'Fold-out dining, fold-down bed, mobile side table: one room, several uses. The daybed, wall bed, fold-down table and pull-out kitchen table do this.'},
+  {k:'inhabited', kind:'info', g:'Concepts', t:'Inhabited walls', d:'Kitchen, storage, bed and desk packed into thick walls so the centre stays open. The storage wall and wall bed follow this idea.'},
+  {k:'modulor', kind:'info', g:'Concepts', t:'Modulor and ergonomic heights', d:'Le Corbusier’s body-based heights: 43 cm seats and platform, 70 cm desk, 86 cm counter, 113 cm leaning, 183 cm high shelf, 226 cm reach. The fittings here follow them closely.'},
+  {k:'split', kind:'info', g:'Concepts', t:'Step-down living', d:'A change in level divides the room without walls. The raised sleeping platform does this.'},
+  {k:'angled', kind:'info', g:'Concepts', t:'Angled walls', d:'Turning the bedroom wall on a diagonal gives a longer view and a bigger bed corner. It suits site-built rooms more than factory modules.'},
+  {k:'spiral', kind:'info', g:'Concepts', t:'Spiral stair and glass floor', d:'For stacked homes, a spiral stair and glass floor panels bring light down through the levels.'},
+  {k:'floating', kind:'info', g:'Concepts', t:'Floating base for floods', d:'The steel floor frame can sit on sealed floats so the home rises with flood water. For flood plains, with an engineer’s design.'},
+  {k:'pinwheel', kind:'info', g:'Concepts', t:'Pinwheel and rhombic tiling', d:'Your studies: one shape turned four ways tiles without gaps, and rhombic modules make rings and chains. The Cluster tab interlocks your modules the same way.'},
+  {k:'aframe', kind:'info', g:'Concepts', t:'A-frame and 45° roof', d:'A steep roof from near the ground gives a tall room with a loft and a big rain and solar surface. The gable roof and loft bed get close to this.'},
+  {k:'deploy', kind:'info', g:'Concepts', t:'Deployable shelters', d:'Fan-folding yurts and expanding caravans unfold to several times their size. The fold-out wings bring this to the home.'},
+  {k:'radial', kind:'info', g:'Concepts', t:'Fan and rotated plans', d:'Rooms on radial lines or a bed turned on a diagonal give longer views. They suit site-built rooms more than factory modules.'},
+  {k:'hex', kind:'info', g:'Concepts', t:'Hexagonal tiling', d:'Slanted modules can tile like a honeycomb. It needs slanted modules; the main design uses rectangles.'},
+];
+function ideaOn(k) { const I = S.spec.ideas || {}, it = IDEAS.find(x => x.k === k); if (it.kind === 'item') return S.items.some(i => i.type === k); return !!I[k]; }
+function ideaPrice(k) { const it = IDEAS.find(x => x.k === k); if (it.kind === 'item') return money(itemCost(newItem(k))); const keep = JSON.stringify(S.spec.ideas || {}); S.spec.ideas = Object.assign({}, S.spec.ideas, {[k]:false}); const off = costs(G.geo).total; S.spec.ideas = Object.assign({}, S.spec.ideas, {[k]:true}); const on = costs(G.geo).total; S.spec.ideas = JSON.parse(keep); return '+' + money(on - off); }
+function toggleIdea(k) {
+  const it = IDEAS.find(x => x.k === k); snapshot();
+  if (it.kind === 'link') { goTab('cluster'); return; }
+  if (it.kind === 'item') {
+    if (ideaOn(k)) { S.items = S.items.filter(i => i.type !== k); commit(); toast('Removed ' + it.t.toLowerCase()); return; }
+    if (CAT[k].needsGable && S.shape.roof !== 'gable') { S.shape.roof = 'gable'; toast('Switched to the gable roof for headroom'); }
+    const sp = findSpot(k); if (!sp) { toast('No free wall for the ' + it.t.toLowerCase() + '. Try Arrange furniture after adding it.'); S.items.push(newItem(k, {x:G.geo.bbox[0] + 1500, y:G.geo.bbox[1] + 1500})); G.motion = true; commit(true); return; }
+    const n = newItem(k, sp); S.items.push(n); G.sel = {kind:'item', id:n.id}; G.motion = true; commit(true); toast('Added ' + it.t.toLowerCase()); return;
+  }
+  S.spec.ideas = Object.assign({}, S.spec.ideas, {[k]:!(S.spec.ideas || {})[k]});
+  if (k === 'stilts') { S.site.rise = S.spec.ideas.stilts ? 2400 : 740; if (S.spec.ideas.stilts && S.site.entry === 'ramp') S.site.entry = 'steps'; }
+  G.anim3D = 'walls'; commit(true); toast((S.spec.ideas[k] ? 'Added ' : 'Removed ') + it.t.toLowerCase());
+}
 
 /* ======================= CLUSTER ======================= */
 // Interlock copies of a home: try every rotation and mirror, snapping corners together,
@@ -1368,6 +1496,37 @@ function buildAsm() {
   svg.innerHTML = h;
   return svg;
 }
+function buildStudio() {
+  const tr = document.getElementById('studioTrack'), G2 = window.__MH_GALLERY; if (!tr || !G2 || tr.dataset.done) return; tr.dataset.done = '1';
+  tr.innerHTML = G2.map((g, i) => `<figure class="st-card" data-i="${i}"><div class="st-frame"><img src="${g.src}" width="${g.w}" height="${g.h}" alt="${esc(g.t + ': ' + g.c)}" decoding="async"></div><figcaption class="st-cap"><span class="st-num">${String(i + 1).padStart(2, '0')}</span><b>${esc(g.t)}</b><span class="c">${esc(g.c)}</span></figcaption></figure>`).join('');
+  const lb = document.getElementById('lightbox');
+  tr.addEventListener('click', e => { const c = e.target.closest('.st-card'); if (!c) return; const g = G2[+c.dataset.i]; $('#lbImg').src = g.src; $('#lbImg').alt = g.t; $('#lbCap').textContent = g.t + ' · ' + g.c; lb.showModal(); });
+  lb.addEventListener('click', e => { if (e.target === lb || e.target.closest('[data-lb]')) lb.close(); });
+}
+function studioMotion(g, ST) {
+  const sec = document.getElementById('s-studio'), tr = document.getElementById('studioTrack'); if (!sec || !tr) return;
+  const cards = [...tr.querySelectorAll('.st-card')], n = cards.length, cnt = document.getElementById('studioCount');
+  const mm = g.matchMedia();
+  mm.add('(min-width: 981px)', () => {
+    const dist = () => tr.scrollWidth - window.innerWidth;
+    const tween = g.to(tr, {x:() => -dist(), ease:'none', scrollTrigger:{trigger:sec, start:'top top', end:() => '+=' + dist(), pin:true, scrub:.9, anticipatePin:1, invalidateOnRefresh:true,
+      onUpdate:self => { const k = Math.min(n, Math.max(1, Math.round(self.progress * (n - 1)) + 1)); if (cnt) cnt.textContent = String(k).padStart(2, '0') + ' / ' + String(n).padStart(2, '0'); g.set('#studioProg', {scaleX:self.progress}); }}});
+    cards.forEach((c, i) => { const img = c.querySelector('img'), cap = c.querySelectorAll('.st-cap > *');
+      g.fromTo(c.querySelector('.st-frame'), {clipPath:'inset(0 0 0 100% round 16px)'}, {clipPath:'inset(0 0 0 0% round 16px)', ease:'none', scrollTrigger:{trigger:c, containerAnimation:tween, start:'left 95%', end:'left 45%', scrub:true}});
+      g.fromTo(img, {scale:1.25, xPercent:8}, {scale:1, xPercent:-4, ease:'none', scrollTrigger:{trigger:c, containerAnimation:tween, start:'left right', end:'right left', scrub:true}});
+      g.from(cap, {yPercent:120, opacity:0, duration:.7, stagger:.08, ease:'power3.out', scrollTrigger:{trigger:c, containerAnimation:tween, start:'left 70%', toggleActions:'play none none reverse'}}); });
+    return () => g.set(tr, {x:0});
+  });
+  mm.add('(max-width: 980px)', () => { cards.forEach(c => { g.fromTo(c.querySelector('.st-frame'), {clipPath:'inset(0 0 100% 0 round 16px)'}, {clipPath:'inset(0 0 0% 0 round 16px)', duration:1, ease:'power3.inOut', scrollTrigger:{trigger:c, start:'top 85%', once:true}});
+    g.from(c.querySelector('img'), {scale:1.2, duration:1.4, ease:'power3.out', scrollTrigger:{trigger:c, start:'top 85%', once:true}}); }); });
+  // cursor bubble on precise pointers
+  if (matchMedia('(pointer:fine)').matches) { const dot = document.getElementById('cursorDot'); const xT = g.quickTo(dot, 'x', {duration:.35, ease:'power3'}), yT = g.quickTo(dot, 'y', {duration:.35, ease:'power3'});
+    sec.addEventListener('pointerenter', () => g.to(dot, {scale:1, duration:.35, ease:'back.out(2)'})); sec.addEventListener('pointerleave', () => g.to(dot, {scale:0, duration:.25}));
+    sec.addEventListener('pointermove', e => { xT(e.clientX); yT(e.clientY); const on = !!e.target.closest('.st-card'); if (dot.dataset.on !== String(on)) { dot.dataset.on = on; dot.textContent = on ? 'View' : 'Scroll'; g.fromTo(dot, {scale:.8}, {scale:1, duration:.3, ease:'back.out(3)'}); } }); }
+  // headline mask for the studio heading
+  const w = splitWords(sec.querySelector('h2')); g.from(w, {yPercent:115, duration:.9, stagger:.06, ease:'power4.out', scrollTrigger:{trigger:sec, start:'top 80%', once:true}});
+  Promise.all([...tr.querySelectorAll('img')].map(i => i.decode ? i.decode().catch(() => {}) : 0)).then(() => ST.refresh());
+}
 function buildSiteCluster() {
   const box = document.getElementById('siteCluster'); if (!box || box.dataset.done || !G.thumbs || !G.thumbs[0] || !G.thumbs[0].state) return;
   box.dataset.done = '1'; const st = G.thumbs[0].state, cl = clusterLayout(st, 6);
@@ -1408,11 +1567,13 @@ function buildFlow() {
 window.addEventListener('resize', () => { const svg = document.getElementById('flowSvg'); if (svg && svg.dataset.mode && (window.innerWidth < 640 ? 'v' : 'h') !== svg.dataset.mode) { svg.dataset.shown = '1'; buildFlow(); } });
 function initSiteMotion() {
   const g = GS(), ST = window.ScrollTrigger;
+  buildStudio();
   const svg = buildAsm();
   const steps = [...document.querySelectorAll('.asm-steps li')];
   const setStep = k => steps.forEach((li, j) => li.classList.toggle('on', j <= k));
   if (!g || !ST) { setStep(3); return; }
   g.registerPlugin(ST);
+  studioMotion(g, ST);   // pinned sections must be created in page order: the gallery comes before the assembly
   // hero intro
   const words = splitWords(document.querySelector('.hero h1')), hl = document.querySelector('.hero .hl');
   if (hl) g.set(hl, {backgroundSize:'0% 100%'});
@@ -1472,6 +1633,7 @@ function initSiteMotion() {
     mm.add('(max-width: 980px)', () => { ST.create({trigger:'#s-build .asm-art', start:'top 70%', end:'bottom 20%', scrub:.8, animation:tl,
       onUpdate:self => { const p = self.progress; setStep(p < at('drive') + .02 ? 0 : p < at('bolt') - .05 ? 1 : p < at('power') ? 2 : 3); }}); });
   }
+  g.to('.scroll-cue', {opacity:0, y:10, ease:'none', scrollTrigger:{trigger:'.hero', start:'top top', end:'15% top', scrub:true}});
   // pause the hero loop when it is off screen
   ST.create({trigger:'.hero', start:'top top', end:'bottom top', onLeave:() => heroTL && heroTL.pause(), onEnterBack:() => heroTL && heroTL.resume()});
   // floating fact chips

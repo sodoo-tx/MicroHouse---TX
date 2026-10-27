@@ -45,7 +45,18 @@ function symbol(it) {
   const R = (x, y, ww, hh, cls = 'sym', rx = 0) => `<rect class="${cls}" x="${f1(x)}" y="${f1(y)}" width="${f1(ww)}" height="${f1(hh)}" rx="${rx}"/>`;
   const C = (x, y, r, cls = 'sym') => `<circle class="${cls}" cx="${f1(x)}" cy="${f1(y)}" r="${f1(r)}"/>`;
   const Ln = (a, b, c, e) => `<line class="sym" x1="${f1(a)}" y1="${f1(b)}" x2="${f1(c)}" y2="${f1(e)}"/>`;
-  if (t === 'platformbed') {
+  if (t === 'daybed') {
+    s += R(x0 + 60, y0 + 60, w - 120, d - 200, 'sym', 40) + Ln(x0, y0 + 160, x0 + w, y0 + 160);
+    s += `<rect class="sym" x="${f1(x0 + 60)}" y="${f1(y0 + d)}" width="${f1(w - 120)}" height="900" style="stroke-dasharray:10 7"/>`;
+  } else if (t === 'loftbed') {
+    s += `<rect class="sym" x="${f1(x0 + 50)}" y="${f1(y0 + 50)}" width="${f1(w - 600)}" height="${f1(d - 100)}" style="stroke-dasharray:12 7"/>` + R(x0 + 120, y0 + 60, w - 760, 550, 'sym', 10);
+    for (let k = 0; k < 5; k++) s += Ln(x0 + w - 520, y0 + d - (k + 1) * d / 6, x0 + w - 40, y0 + d - (k + 1) * d / 6);
+  } else if (t === 'wallstore') {
+    for (let k = 1; k < 6; k++) s += Ln(x0 + k * w / 6, y0 + 20, x0 + k * w / 6, y0 + d);
+    s += R(x0 + w * .4, y0 + 40, w * .2, d - 80, 'sym', 0);
+  } else if (t === 'cart') {
+    s += R(x0 + 30, y0 + 30, w - 60, d - 60, 'sym', 30) + C(x0 + 70, y0 + d - 50, 25, 'symf') + C(x0 + w - 70, y0 + d - 50, 25, 'symf');
+  } else if (t === 'platformbed') {
     // storage boxes, mattress on top, steps at the open side
     for (let i = 1; i < 3; i++) s += Ln(x0 + i * w/3, y0, x0 + i * w/3, y0 + d - 650);
     s += Ln(x0, y0 + d - 650, x0 + w, y0 + d - 650);
@@ -160,6 +171,12 @@ function itemMarkup(it, o) {
     g += `<rect x="${f1(-it.w/2)}" y="${f1(-it.d/2 - 60)}" width="${f1(it.w)}" height="${f1(it.d + 120)}" fill="transparent"/>`;
   } else if (it.type === 'overhead') {
     g += `<rect class="body c-store" x="${f1(-it.w/2)}" y="${f1(-it.d/2)}" width="${f1(it.w)}" height="${f1(it.d)}" style="fill-opacity:.18; stroke-dasharray:14 8; stroke-opacity:.7"/>`;
+  } else if (it.type === 'liftbed') {
+    g += `<rect class="body" x="${f1(-it.w/2)}" y="${f1(-it.d/2)}" width="${f1(it.w)}" height="${f1(it.d)}" style="fill:none; stroke-dasharray:16 9"/>`;
+    g += `<rect class="sym" x="${f1(-it.w/2 + 70)}" y="${f1(-it.d/2 + 70)}" width="${f1(it.w - 140)}" height="380" style="stroke-dasharray:8 8"/>`;
+  } else if (it.type === 'net') {
+    g += `<rect class="body" x="${f1(-it.w/2)}" y="${f1(-it.d/2)}" width="${f1(it.w)}" height="${f1(it.d)}" style="fill:none; stroke-dasharray:6 6"/>`;
+    for (let k = -3; k <= 3; k++) g += `<line class="sym" x1="${f1(k * it.w / 8)}" y1="${f1(-it.d/2)}" x2="${f1(k * it.w / 8 + it.d / 3)}" y2="${f1(it.d/2)}" style="stroke-dasharray:4 6"/>`;
   } else if (it.type === 'dryrack') {
     g += `<rect class="body" x="${f1(-it.w/2)}" y="${f1(-it.d/2)}" width="${f1(it.w)}" height="${f1(it.d)}" style="fill:none; stroke-dasharray:10 7"/>`;
     for (let i = -1; i <= 1; i++) g += `<line class="sym" x1="${f1(-it.w/2 + 40)}" y1="${f1(i * it.d / 4)}" x2="${f1(it.w/2 - 40)}" y2="${f1(i * it.d / 4)}" style="stroke-dasharray:6 6"/>`;
@@ -199,6 +216,27 @@ function openingMarkup(geo, op, o) {
   g += `<polygon class="op-hit" points="${pts(hit)}"/>`;
   return g + '</g>';
 }
+function ideaMarkup(st, geo) {
+  const I = (st.spec && st.spec.ideas) || {}; let h = '';
+  const ops = (st.openings || []).map(op => ({op, f:opFrame(geo, op)})).filter(x => x.f);
+  const out = x => mul(x.f.e.n, -1);
+  const glass = ops.filter(x => OPN[x.op.type].kind !== 'door').sort((a, b) => b.op.w - a.op.w);
+  if (I.bay && glass[0]) { const x = glass[0], u = x.f.e.u, n = out(x), a = add(x.f.a, mul(u, 0)), b = x.f.b;
+    const P = [a, b, add(b, mul(n, 500)), add(a, mul(n, 500))]; h += `<polygon class="idea-bay" points="${pts(P)}"/>`; }
+  if (I.porch) { const d = ops.find(x => OPN[x.op.type].kind === 'door'); if (d) { const n = out(d), u = d.f.e.u, m = mul(add(d.f.a, d.f.b), .5);
+    const A = add(add(m, mul(u, -900)), mul(n, 1200)), B = add(add(m, mul(u, 900)), mul(n, 1200)); h += `<line class="idea-screen" x1="${f1(A[0])}" y1="${f1(A[1])}" x2="${f1(B[0])}" y2="${f1(B[1])}"/>`;
+    const D = [add(add(m, mul(u, -1000)), mul(n, 0)), add(add(m, mul(u, 1000)), mul(n, 0)), add(add(m, mul(u, 1000)), mul(n, 1300)), add(add(m, mul(u, -1000)), mul(n, 1300))]; h += `<polygon class="idea-deck" points="${pts(D)}"/>`; } }
+  if (I.trellis && glass[0]) { const x = glass[0], n = out(x), A = add(x.f.e.a, mul(n, 700)), B = add(x.f.e.b, mul(n, 700)); h += `<line class="idea-trellis" x1="${f1(A[0])}" y1="${f1(A[1])}" x2="${f1(B[0])}" y2="${f1(B[1])}"/>`; }
+  if (I.pergola && glass[0]) { const x = glass[0], n = out(x), u = x.f.e.u, m = mul(add(x.f.a, x.f.b), .5);
+    const P = [add(add(m, mul(u, -1500)), mul(n, 100)), add(add(m, mul(u, 1500)), mul(n, 100)), add(add(m, mul(u, 1500)), mul(n, 2500)), add(add(m, mul(u, -1500)), mul(n, 2500))]; h += `<polygon class="idea-deck" points="${pts(P)}"/>`; }
+  if (I.wings) { const longE = geo.ext.filter(e => e.len > 3500).sort((p, q) => q.len - p.len).slice(0, 2);
+    longE.forEach(e => { const n = mul(e.n, -1), m = mul(add(e.a, e.b), .5), r = Math.min(1900, e.len / 2 - 300); let d = `M${f1(m[0] - e.u[0] * r)} ${f1(m[1] - e.u[1] * r)} `;
+      for (let k = 0; k <= 16; k++) { const a2 = Math.PI * k / 16, p = add(add(m, mul(e.u, -Math.cos(a2) * r)), mul(n, Math.sin(a2) * r * .75)); d += `L${f1(p[0])} ${f1(p[1])} `; }
+      h += `<path class="idea-wing" d="${d}Z"/>`; }); }
+  if (I.trundle) { const pb = (st.items || []).find(i => i.type === 'platformbed'); if (pb) { const f = frontDir(pb.rot), c = add([pb.x, pb.y], mul(f, pb.d / 2 + 500)); h += `<rect class="idea-trundle" x="${f1(c[0] - 700)}" y="${f1(c[1] - 450)}" width="1400" height="900" transform="rotate(${pb.rot} ${f1(c[0])} ${f1(c[1])})"/>`; } }
+  if (I.shutters) glass.forEach(x => { const n = out(x), A = add(x.f.a, mul(n, 80)), B = add(x.f.b, mul(n, 80)), C2 = add(B, mul(n, 800)), D = add(A, mul(n, 800)); h += `<polygon class="idea-shutter" points="${pts([A, B, C2, D])}"/>`; });
+  return h;
+}
 function planMarkup(st, geo, o = {}) {
   const val = o.val;
   let h = '';
@@ -231,6 +269,7 @@ function planMarkup(st, geo, o = {}) {
     if (G.tab === 'shape') geo.mods.forEach(m => { const c = centroid(m.poly); if (m.key === 'C') return; h += `<text class="it-label" x="${f1(c[0])}" y="${f1(c[1] + 260)}" text-anchor="middle" style="opacity:.55">${(polyArea(m.poly) / 1e6).toFixed(2)} m²</text>`; });
   }
   if (!o.mini) { const c = centroid(geo.mods[0].poly); h += `<text class="area-label" x="${f1(c[0])}" y="${f1(c[1])}" text-anchor="middle" dominant-baseline="central">${geo.area.toFixed(1)} m²</text>`; }
+  if (!o.mini) h += ideaMarkup(st, geo);
   return h;
 }
 function viewBoxFor(geo, pad) { const b = geo.bbox; return [b[0] - pad, b[1] - pad, b[2] - b[0] + 2*pad, b[3] - b[1] + 2*pad]; }

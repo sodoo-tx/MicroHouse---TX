@@ -21,6 +21,6 @@ if '--minify' in sys.argv:
     tmp.unlink()
 
 html = (src / 'template.html').read_text(encoding='utf-8')
-html = html.replace('/*__APP__*/', js).replace('/*__THUMBS__*/null', (src / 'layouts.json').read_text(encoding='utf-8'))
+html = html.replace('/*__APP__*/', js).replace('/*__THUMBS__*/null', (src / 'layouts.json').read_text(encoding='utf-8')).replace('/*__GALLERY__*/null', (src / 'gallery.json').read_text(encoding='utf-8'))
 (root / 'index.html').write_text(html, encoding='utf-8')
 print(f'Wrote index.html ({len(html) // 1024} KB)')

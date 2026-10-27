@@ -34,6 +34,12 @@ const CAT = {
   basin:    {label:'Basin unit',     grp:'Bath',    cls:'c-bath',    w:500,  d:420,  h:900,  cost:70, clear:550, wall:true,  zone:'wet'},
   washer:   {label:'Washer-dryer',grp:'Bath',    cls:'c-bath',    w:600,  d:600,  h:850,  cost:420, clear:600, wall:true,  zone:'wet'},
   energy:   {label:'Energy cabinet', grp:'Tech',    cls:'c-tech',    w:600,  d:500,  h:2000, cost:90, clear:700, wall:true,  zone:'tech'},
+  daybed:   {label:'Extendable daybed, sofa by day, double by night', grp:'Sleep', cls:'c-living', w:2000, d:850, h:450, cost:520, clear:1000, wall:true, zone:'bed', store:250},
+  loftbed:  {label:'Loft bed over desk, storage stairs', grp:'Sleep', cls:'c-sleep', w:2100, d:1500, h:2300, cost:980, clear:600, wall:true, zone:'bed', store:700, needsGable:true},
+  liftbed:  {label:'Ceiling lift bed, lowers at night', grp:'Sleep', cls:'c-sleep', w:1600, d:2050, h:0, cost:1450, clear:0, wall:false, zone:'any', overlay:true, needsGable:true},
+  wallstore:{label:'Full-height storage wall, open niches', grp:'Storage', cls:'c-store', w:2400, d:400, h:2400, cost:620, clear:500, wall:true, zone:'store', store:1600},
+  cart:     {label:'Kitchen cart on wheels', grp:'Kitchen', cls:'c-kitchen', w:600, d:450, h:900, cost:150, clear:0, wall:false, zone:'kitchen', store:70},
+  net:      {label:'Ceiling net lounge', grp:'Living', cls:'c-roof', w:2000, d:1600, h:0, cost:260, clear:0, wall:false, zone:'any', overlay:true, needsGable:true},
   tatamibed:{label:'Tatami platform bed, drawers', grp:'Sleep', cls:'c-sleep', w:1600, d:2100, h:400, cost:380, clear:450, wall:true, zone:'bed', store:600, style:'Japanese'},
   nightstand:{label:'Nightstand',     grp:'Sleep',   cls:'c-store',   w:400,  d:350,  h:500,  cost:35,  clear:300, wall:true,  zone:'night', store:40},
   oshiire:  {label:'Oshiire futon closet', grp:'Storage', cls:'c-store', w:900, d:800, h:2100, cost:260, clear:700, wall:true, zone:'store', store:1100, style:'Japanese'},
@@ -138,7 +144,7 @@ function defaultState() {
     hints: {bathWing:'left', bedEnd:'top', kitchenIn:'wing', doorAt:'auto'},
     program: {access:false, secondExit:false, style:'standard', maxStorage:true, pantry:true, getabako:true, cleaning:true, bins:true, dryrack:true, nightstand:true, divider:false, bed:'bed160', bathing:'shower', toilet:'toilet', kitchen:1800, fridgeTall:false, washer:true,
               wardrobe:true, sofa:'sofa', dining:true, desk:false, stove:false, shelf:false, shoe:true},
-    spec: {glazing:'double', cladding:'steel', insul:'std', finish:'ply', frame:'light'},
+    spec: {glazing:'double', cladding:'steel', insul:'std', finish:'ply', frame:'light', ideas:{}},
     sys: {pv:1.8, batt:7.5, tank:true, tankL:880, cisternL:2500, grey:true, mvhr:1, heating:'heatpump', heater:'inst', people:2, sun:4, rain:700},
     site: {km:150, cur:'USD', rate:null, limit:25, north:180, hemi:'N', entry:'steps', rise:740},
     prices: p, iprices: ip,
@@ -393,7 +399,7 @@ function validate(geo) {
   if (lim) ck(geo.area <= lim + 1e-4 ? 'ok' : 'bad', geo.area <= lim + 1e-4 ? `Floor area ${geo.area.toFixed(1)} m², within the ${lim} m² limit` : `Floor area ${geo.area.toFixed(1)} m² is over the ${lim} m² limit`);
   else ck('ok', `Floor area ${geo.area.toFixed(1)} m², no limit set`);
   ck(S.openings.some(o => OPN[o.type].kind === 'door') ? 'ok' : 'bad', S.openings.some(o => OPN[o.type].kind === 'door') ? 'Entry door placed' : 'Add an entry door');
-  ck(has('bed160','bed140','bed90','tatamibed','platformbed','sofabed','wallbed') ? 'ok' : 'bad', has('bed160','bed140','bed90','tatamibed','platformbed','sofabed','wallbed') ? 'Somewhere to sleep' : 'Add a bed or sofa bed');
+  ck(has('bed160','bed140','bed90','tatamibed','platformbed','daybed','loftbed','liftbed','sofabed','wallbed') ? 'ok' : 'bad', has('bed160','bed140','bed90','tatamibed','platformbed','daybed','loftbed','liftbed','sofabed','wallbed') ? 'Somewhere to sleep' : 'Add a bed or sofa bed');
   const segs = exitSegments(geo), beds = S.items.filter(i => BED_TYPES.includes(i.type));
   if (beds.length && segs.length) { const d = Math.min(...beds.map(b => bedExitDist(b, segs)));
     ck(d >= BED_EXIT_MIN ? 'ok' : 'bad', d >= BED_EXIT_MIN ? `Bed is ${(d / 1000).toFixed(1)} m from the nearest exit` : `Bed is only ${(d / 1000).toFixed(1)} m from an exit. Keep it at least ${BED_EXIT_MIN / 1000} m away`); }
@@ -426,6 +432,10 @@ function validate(geo) {
     const pd = S.items.filter(i => i.type === 'partition' && i.opt && i.opt.door).every(i => (i.opt.dw || 0) >= 850);
     ck(pd ? 'ok' : 'warn', pd ? 'Inside doors at least 85 cm' : 'Widen inside doors to at least 85 cm');
   }
+  if ((S.spec.ideas || {}).trundle) { const hasP = S.items.some(i => i.type === 'platformbed'); ck(hasP ? 'ok' : 'bad', hasP ? 'Pull-out guest bed under the platform: room for a third person' : 'The pull-out guest bed needs the raised platform bed'); }
+  if ((S.spec.ideas || {}).slimline) ck('warn', 'Slimline tank stands outside: drain it or keep it frost-protected in deep winter');
+  if ((S.spec.ideas || {}).greenroof) ck('warn', 'A green roof adds about 150 kg per m²: the roof beams and piles need an engineer’s check, and the roof gives half the rainwater');
+  { const tall = S.items.filter(i => CAT[i.type] && CAT[i.type].needsGable); if (tall.length) ck(S.shape.roof === 'gable' ? 'ok' : 'bad', S.shape.roof === 'gable' ? 'Loft and net sit under the gable roof, with headroom above' : `${tall.map(i => CAT[i.type].label).join(', ')} needs the gable roof for headroom. Switch the roof in Finishes`); }
   const br = bracing(geo);
   ck(br.x >= 2 && br.y >= 2 ? 'ok' : 'bad', `Solid walls for bracing: ${br.x} across, ${br.y} along (need 2 each)`);
   const glass = S.openings.reduce((s, o) => s + (OPN[o.type].glass ? o.w * o.h : 0), 0) / 1e6;
@@ -467,7 +477,7 @@ function bracing(geo) {
 
 /* beds must stay clear of every exit */
 const BED_EXIT_MIN = 1500;   // a full wheelchair turning circle between bed and exit
-const BED_TYPES = ['bed160', 'bed140', 'bed90', 'tatamibed', 'platformbed', 'wallbed'];
+const BED_TYPES = ['bed160', 'bed140', 'bed90', 'tatamibed', 'platformbed', 'daybed', 'loftbed', 'liftbed', 'wallbed'];
 function exitSegments(geo, openings) {
   return (openings || S.openings).filter(o => OPN[o.type].kind === 'door' || o.type === 'slide').map(o => { const f = opFrame(geo, o); if (!f) return null;
     return [add(f.a, mul(f.e.n, T)), add(f.b, mul(f.e.n, T))]; }).filter(Boolean);
@@ -531,24 +541,24 @@ function walkCheck(geo, st, R0) {
 const rampLen = () => (S.site.rise || 740) * 12 + 1500;
 /* storage and the essentials a couple needs */
 function itemStore(it) { if (it.type === 'kitchen') return Math.round(it.w / 1000 * 350); return CAT[it.type].store || 0; }
-function storageLitres(st) { return ((st || S).items || []).reduce((s, i) => s + (CAT[i.type] ? itemStore(i) : 0), 0) + (((st || S).items || []).some(i => i.type === 'basin') ? 60 : 0); }
+function storageLitres(st) { const I = ((st || S).spec && (st || S).spec.ideas) || {}; return ((st || S).items || []).reduce((s, i) => s + (CAT[i.type] ? itemStore(i) : 0), 0) + (((st || S).items || []).some(i => i.type === 'basin') ? 60 : 0) + (I.shelves ? 250 : 0) + (I.bookring ? 300 : 0) + (I.trundle ? 150 : 0); }
 const STORE_TARGET = 2500;
 function readyForTwo(st) {
   st = st || S; const has = (...t) => st.items.some(i => t.includes(i.type)), count = (...t) => st.items.filter(i => t.includes(i.type)).length;
   const style = (st.program && st.program.style) || 'standard';
   const pull = st.items.some(i => i.type === 'kitchen' && i.opt && i.opt.pullout);
   const L = [
-    {k:'Bed for two', ok:st.items.some(i => ['bed160', 'bed140', 'tatamibed', 'platformbed', 'wallbed', 'sofabed'].includes(i.type)), add:style === 'japanese' ? 'tatamibed' : 'bed160'},
+    {k:'Bed for two', ok:st.items.some(i => ['bed160', 'bed140', 'tatamibed', 'platformbed', 'daybed', 'loftbed', 'liftbed', 'wallbed', 'sofabed'].includes(i.type)), add:style === 'japanese' ? 'tatamibed' : 'bed160'},
     {k:'Kitchen with sink and hob', ok:has('kitchen'), add:'kitchen'},
     {k:'Fridge', ok:st.items.some(i => i.type === 'fridge' || (i.type === 'kitchen' && i.opt && i.opt.fridge)), add:'fridge'},
-    {k:'Table for two', ok:has('dining', 'foldtable', 'kotatsu', 'soban', 'desk', 'nook') || pull, add:style === 'japanese' ? 'kotatsu' : style === 'korean' ? 'soban' : 'dining'},
-    {k:'Seats for two', ok:has('sofa', 'sofabed', 'kotatsu', 'soban', 'dining', 'benchstore', 'nook') || pull, add:'nook'},
+    {k:'Table for two', ok:has('dining', 'foldtable', 'kotatsu', 'soban', 'desk', 'nook', 'loftbed') || pull, add:style === 'japanese' ? 'kotatsu' : style === 'korean' ? 'soban' : 'dining'},
+    {k:'Seats for two', ok:has('sofa', 'sofabed', 'daybed', 'kotatsu', 'soban', 'dining', 'benchstore', 'nook') || pull || !!(st.spec && st.spec.ideas && st.spec.ideas.counterchairs), add:'nook'},
     {k:'Toilet', ok:has('toilet', 'wc', 'acctoilet'), add:'toilet'},
     {k:'Shower or bath', ok:has('shower', 'bath', 'ofuro', 'accshower'), add:'shower'},
     {k:'Hand basin', ok:has('basin', 'accbasin'), add:'basin'},
     {k:'Laundry: washer-dryer', ok:has('washer') || st.items.some(i => i.type === 'kitchen' && i.opt && i.opt.washer), add:'washer'},
     {k:'Drying rack', ok:has('dryrack', 'washer') || st.items.some(i => i.type === 'kitchen' && i.opt && i.opt.washer), add:'dryrack'},
-    {k:'Clothes storage for two', ok:has('wardrobe', 'oshiire', 'jang', 'rail', 'platformbed') || (has('bed160', 'bed140', 'tatamibed', 'wallbed') && count('overhead') >= 2), add:style === 'japanese' ? 'oshiire' : style === 'korean' ? 'jang' : 'wardrobe'},
+    {k:'Clothes storage for two', ok:has('wardrobe', 'oshiire', 'jang', 'rail', 'platformbed', 'wallstore') || (has('bed160', 'bed140', 'tatamibed', 'wallbed') && count('overhead') >= 2), add:style === 'japanese' ? 'oshiire' : style === 'korean' ? 'jang' : 'wardrobe'},
     {k:'Shoe storage', ok:has('getabako', 'shoe', 'benchstore', 'shoeslim'), add:'getabako'},
     {k:'Food storage (pantry or kitchen cupboards)', ok:has('pantry') || st.items.some(i => i.type === 'kitchen' && (i.w >= 1500 || (i.w >= 1200 && count('overhead') >= 2))), add:'pantry'},
     {k:'Cleaning storage', ok:has('cleaning', 'cleanrail'), add:'cleaning'},
@@ -670,6 +680,39 @@ function costs(geo) {
   L('Energy and water', {el:'Water heater 50 L', inst:'Instant water heater', solar:'Solar water heater'}[y.heater], {el:P.heater_el, inst:P.heater_inst, solar:P.heater_solar}[y.heater]);
   // labour
   L('Fit-out and furniture', 'Smoke and CO alarm, fire extinguisher, first aid kit', 60);
+  { const I = S.spec.ideas || {}, glassM2 = S.openings.filter(o => OPN[o.type].glass || OPN[o.type].kind === 'win').reduce((a, o) => a + o.w * o.h / 1e6, 0);
+    if (I.shutters) L('Doors and windows', `Lift-up translucent shading shutters, ${glassM2.toFixed(1)} m² of glass`, 180 + glassM2 * 95);
+    if (I.bay) L('Doors and windows', 'Box window seat projecting 50 cm, cushion and frame', 1350);
+    if (I.stilts) L('Transport and install', 'Tall posts, floor about 2.4 m up, sheltered space below with stair', 1900);
+    if (I.trellis) L('Walls, floor and roof', 'Rope trellis for climbing plants on the sunny side', 180);
+    if (I.porch) L('Walls, floor and roof', 'Timber slat screen and deck at the entrance', 780);
+    if (I.spout) L('Energy and water', 'Concealed rain spout to the cistern', 140);
+    if (I.exposed) L('Fit-out and furniture', 'Exposed steel painted in colour, display ledge on the beams', 320);
+    if (I.courtyard) L('Transport and install', 'Courtyard patio: paving, gravel and planting, about 9 m²', 1100);
+    if (I.quadcore) { const wallM2 = geo.ext.reduce((a, e) => a + e.len, 0) / 1000 * 2.6; L('Walls, floor and roof', `Kingspan QuadCore insulated panels instead of rockwool build-up, ${(wallM2 + A).toFixed(0)} m², extra over`, (wallM2 + A) * 22); }
+    if (I.trundle) L('Fit-out and furniture', 'Pull-out guest bed under the raised platform', 340);
+    if (I.wind) L('Energy and water', 'Small wind turbine 1 kW with 6 m mast and charge controller', 1650);
+    if (I.pergola) L('Walls, floor and roof', 'Covered pergola terrace, deck and slatted roof, about 7 m²', 1450);
+    if (I.slimline) L('Energy and water', 'Kingspan Slimline 2,000 L water tank, above ground, with frost cover', 980);
+    if (I.shelves) L('Fit-out and furniture', 'Angled open timber shelves above the kitchen counter', 290);
+    if (I.counterchairs) L('Fit-out and furniture', 'Two chairs that slot flush into the counter', 260);
+    if (I.curtain) L('Fit-out and furniture', 'Curved ceiling track and waterproof curtain for the bathroom', 140);
+    if (I.vents) L('Walls, floor and roof', 'Two roof stack vents with insect mesh and covers', 220);
+    if (I.skylight) L('Walls, floor and roof', 'Central opening skylight, triple glazed', 760);
+    if (I.facade) L('Doors and windows', 'Layered facade: insect screen, sailcloth curtain, bamboo screen', 920);
+    if (I.fog) L('Energy and water', 'Fog catcher mesh on the canopy, highlands only', 260);
+    if (I.biodisc) L('Energy and water', 'Kingspan BioDisc wastewater treatment plant', 3600);
+    if (I.greywell) L('Energy and water', 'Greywater recharge well with gravel filter', 520);
+    if (I.bookring) L('Fit-out and furniture', 'High bookshelf ring above the windows', 280);
+    if (I.hiddenkitchen) L('Fit-out and furniture', 'Folding doors that hide the kitchen', 360);
+    if (I.wings) L('Doors and windows', 'Fold-out fabric wings on both long sides, about 8 m² of summer room', 1900);
+    if (I.raincollector) L('Walls, floor and roof', 'Roof tilted to one rain-collecting valley, insulated gutter', 640);
+    if (I.dridesign) L('Walls, floor and roof', 'Kingspan Dri-Design metal cassette facade instead of steel sheet', geo.ext.reduce((a, e) => a + e.len, 0) / 1000 * 2.6 * 38);
+    if (I.powerpanel) L('Energy and water', 'Kingspan QuadCore PowerPanel: roof panel with integrated solar, extra over', 900);
+    if (I.greenguard) L('Walls, floor and roof', `Kingspan GreenGuard XPS under the floor, ${A.toFixed(0)} m²`, A * 14);
+    if (I.kilon) L('Doors and windows', 'Kilon translucent polycarbonate wall section by Kingspan, about 6 m²', 690);
+    if (I.greenroof) L('Walls, floor and roof', `Sedum green roof with root barrier, ${A.toFixed(0)} m², needs a stronger roof`, A * 55 + 400);
+    if (I.glazedroof) L('Walls, floor and roof', 'Glazed roof bay with movable shading louvres, about 4 m²', 2100); }
   if (y.heating === 'ondol') L('Energy and water', `Ondol floor heating, ${A.toFixed(1)} m²`, 180 + A * 25);
   L('Factory labour and services', `Assembly and fit-out, ${A.toFixed(1)} m²`, A * P.labour_m2);
   L('Factory labour and services', 'Electrics and plumbing', A * P.mep_m2);
@@ -714,12 +757,13 @@ function offgrid() {
   kwh += .25; // pump
   kwh += y.mvhr * .15;
   if (y.heater === 'el') kwh += 1.6 * y.people / 2; else if (y.heater === 'inst') kwh += 1.4 * y.people / 2; else kwh += .3;
-  const winter = y.heating === 'heatpump' ? 3.2 : y.heating === 'ondol' ? 5.5 : 0;
+  const I = S.spec.ideas || {};
+  const winter = (y.heating === 'heatpump' ? 3.2 : y.heating === 'ondol' ? 5.5 : 0) * (I.quadcore ? .7 : 1) * (I.greenguard ? .92 : 1) * (I.greenroof ? .95 : 1) * (I.glazedroof ? 1.12 : 1);
   if (it('kotatsu')) kwh += .3;
-  const pv = y.pv * y.sun * .8;
+  const wind = I.wind ? 1.8 : 0, pv = y.pv * y.sun * .8 * (I.powerpanel ? 1.08 : 1) + wind;
   const days = (y.batt * .9) / Math.max(kwh, .1);
   const perPerson = it('bath') ? 85 : 55; const water = y.people * perPerson + 15 + (it('wc') ? y.people * 25 : 0);
-  const geo = G.geo; const rainDay = geo.area * y.rain * .8 / 365; // litres/day from roof
-  const store = (y.tank ? y.tankL : 0) + y.cisternL; const wdays = store / water;
-  return {kwh, winter, pv, days, water, rainDay, store, wdays};
+  const geo = G.geo; const rainDay = geo.area * y.rain * (I.raincollector ? .9 : .8) * (I.greenroof ? .5 : 1) / 365; // litres/day from roof
+  const store = (y.tank ? y.tankL : 0) + y.cisternL + (I.slimline ? 2000 : 0); const wdays = store / water;
+  return {kwh, winter, pv, wind, days, water, rainDay, store, wdays};
 }
