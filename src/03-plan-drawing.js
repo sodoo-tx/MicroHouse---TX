@@ -45,7 +45,13 @@ function symbol(it) {
   const R = (x, y, ww, hh, cls = 'sym', rx = 0) => `<rect class="${cls}" x="${f1(x)}" y="${f1(y)}" width="${f1(ww)}" height="${f1(hh)}" rx="${rx}"/>`;
   const C = (x, y, r, cls = 'sym') => `<circle class="${cls}" cx="${f1(x)}" cy="${f1(y)}" r="${f1(r)}"/>`;
   const Ln = (a, b, c, e) => `<line class="sym" x1="${f1(a)}" y1="${f1(b)}" x2="${f1(c)}" y2="${f1(e)}"/>`;
-  if (t === 'accshower') {
+  if (t === 'platformbed') {
+    // storage boxes, mattress on top, steps at the open side
+    for (let i = 1; i < 3; i++) s += Ln(x0 + i * w/3, y0, x0 + i * w/3, y0 + d - 650);
+    s += Ln(x0, y0 + d - 650, x0 + w, y0 + d - 650);
+    s += `<rect class="sym" x="${f1(x0 + 120)}" y="${f1(y0 + 80)}" width="${f1(w - 240)}" height="${f1(d - 850)}" style="stroke-dasharray:12 8"/>`;
+    for (let i = 0; i < 3; i++) s += Ln(x0 + w/2 - 450, y0 + d - 650 + i * 216 + 108, x0 + w/2 + 450, y0 + d - 650 + i * 216 + 108);
+  } else if (t === 'accshower') {
     s += Ln(x0 + 60, y0 + d - 60, x0 + w - 60, y0 + d - 60) + R(x0 + 40, y0 + 40, 420, 380, 'sym', 20) + C(0, 0, 45, 'symf');
     s += `<circle class="sym" cx="0" cy="0" r="${f1(Math.min(w, d) / 2 - 30)}" style="stroke-dasharray:8 8"/>`;
   } else if (t === 'acctoilet') {

@@ -1,7 +1,7 @@
 (() => {
 'use strict';
 const $ = s => document.querySelector(s);
-const T = 200;          // wall build-up, outer cladding face to inner board face (mm)
+let T = 200;            // wall build-up (mm); each design sets it through shape.wallT (250 for the two-module family)
 const PIL_EXT = 132;    // outer face to pillar centre
 const FLOOR_H = 240;    // finished floor above pillar base (mm)
 const WALL_H = 3000;    // frame + roof edge (mm)
@@ -48,6 +48,7 @@ const CAT = {
   kotatsu:  {label:'Kotatsu table, floor chairs', grp:'Living', cls:'c-living', w:1300, d:1300, h:400, cost:200, clear:0, wall:false, zone:'living', style:'Japanese'},
   soban:    {label:'Folding low table (bapsang)', grp:'Living', cls:'c-living', w:1100, d:1100, h:350, cost:70, clear:0, wall:false, zone:'living', style:'Korean'},
   ofuro:    {label:'Ofuro soaking tub', grp:'Bath',  cls:'c-bath',    w:1100, d:750,  h:650,  cost:450, clear:600, wall:true,  zone:'wet', style:'Japanese'},
+  platformbed:{label:'Raised platform bed, storage and steps', grp:'Sleep', cls:'c-sleep', w:2050, d:2250, h:450, cost:690, clear:600, wall:true, zone:'bed', store:900},
   nook:     {label:'Fold-down table + storage bench', grp:'Living', cls:'c-living', w:1200, d:450, h:900, cost:180, clear:900, wall:true, zone:'living', store:180},
   rail:     {label:'Open clothes rail', grp:'Storage', cls:'c-store', w:1000, d:450, h:1800, cost:60, clear:550, wall:true, zone:'store', store:450},
   cleanrail:{label:'Wall cleaning rack', grp:'Storage', cls:'c-store', w:500, d:150, h:1500, cost:25, clear:400, wall:true, zone:'tech', store:40},
@@ -64,6 +65,7 @@ const OPN = {
   door_wide: {label:'Wide door, level threshold', kind:'door', w:1000, h:2100, sill:0},
   door_glass:{label:'Glazed door',       kind:'door',  w:900,  h:2100, sill:0, glass:true},
   slide:     {label:'Sliding glass door',kind:'slide', w:2000, h:2200, sill:0, glass:true},
+  glasswall: {label:'Glass wall, fixed', kind:'win', w:2000, h:2000, sill:250, glass:true},
   win_s:     {label:'Small window',      kind:'win',   w:600,  h:600,  sill:1500, glass:true},
   win_m:     {label:'Window',            kind:'win',   w:1200, h:1200, sill:900,  glass:true},
   win_strip: {label:'Strip window',      kind:'win',   w:1800, h:700,  sill:1150, glass:true},
@@ -154,6 +156,7 @@ function dedupe(P) { const o = []; P.forEach(p => { const l = o[o.length-1]; if 
 function inPoly(p, P) { let c = false; for (let i = 0, j = P.length-1; i < P.length; j = i++) { const a = P[i], b = P[j]; if ((a[1] > p[1]) !== (b[1] > p[1]) && p[0] < (b[0]-a[0])*(p[1]-a[1])/(b[1]-a[1]) + a[0]) c = !c; } return c; }
 
 function buildGeo(sh) {
+  T = +(sh && sh.wallT) || 200;
   const L = sh.L, Wc = sh.Wc, LW = sh.left, RW = sh.right;
   const lw = LW.on ? LW.w : 0, xl = lw, xr0 = xl + Wc, rw = RW.on ? RW.w : 0, xr1 = xr0 + rw;
   const jr = w => { if (!w.on) return null; const j = [Math.max(w.inTop, 0), Math.min(w.inBot, L)]; return j[1] - j[0] > 1 ? j : null; };
@@ -390,7 +393,7 @@ function validate(geo) {
   if (lim) ck(geo.area <= lim + 1e-4 ? 'ok' : 'bad', geo.area <= lim + 1e-4 ? `Floor area ${geo.area.toFixed(1)} m², within the ${lim} m² limit` : `Floor area ${geo.area.toFixed(1)} m² is over the ${lim} m² limit`);
   else ck('ok', `Floor area ${geo.area.toFixed(1)} m², no limit set`);
   ck(S.openings.some(o => OPN[o.type].kind === 'door') ? 'ok' : 'bad', S.openings.some(o => OPN[o.type].kind === 'door') ? 'Entry door placed' : 'Add an entry door');
-  ck(has('bed160','bed140','bed90','tatamibed','sofabed','wallbed') ? 'ok' : 'bad', has('bed160','bed140','bed90','tatamibed','sofabed','wallbed') ? 'Somewhere to sleep' : 'Add a bed or sofa bed');
+  ck(has('bed160','bed140','bed90','tatamibed','platformbed','sofabed','wallbed') ? 'ok' : 'bad', has('bed160','bed140','bed90','tatamibed','platformbed','sofabed','wallbed') ? 'Somewhere to sleep' : 'Add a bed or sofa bed');
   const segs = exitSegments(geo), beds = S.items.filter(i => BED_TYPES.includes(i.type));
   if (beds.length && segs.length) { const d = Math.min(...beds.map(b => bedExitDist(b, segs)));
     ck(d >= BED_EXIT_MIN ? 'ok' : 'bad', d >= BED_EXIT_MIN ? `Bed is ${(d / 1000).toFixed(1)} m from the nearest exit` : `Bed is only ${(d / 1000).toFixed(1)} m from an exit. Keep it at least ${BED_EXIT_MIN / 1000} m away`); }
@@ -407,7 +410,7 @@ function validate(geo) {
     ck(wetMods.size <= 1 || (S.hints.bathWing === 'end' && wetMods.size <= 2) ? 'ok' : 'warn', wetMods.size <= 1 || (S.hints.bathWing === 'end' && wetMods.size <= 2) ? 'Wet fittings grouped together, short pipes' : 'Wet fittings spread over modules, longer pipes');
   }
   if (S.swapped && S.swapped.length) S.swapped.forEach(t => ck('warn', t));
-  if (S.unplaced && S.unplaced.length) { const needOf = {getabako:'Shoe storage', shoe:'Shoe storage', wardrobe:'Clothes storage for two', oshiire:'Clothes storage for two', jang:'Clothes storage for two', dining:'Table for two', kotatsu:'Table for two', soban:'Table for two', sofa:'Seats for two', cleaning:'Cleaning storage', pantry:'Food storage (pantry or kitchen cupboards)', bins:'Recycling bins (under the sink or separate)', washer:'Laundry: washer-dryer'};
+  if (S.unplaced && S.unplaced.length) { const needOf = {getabako:'Shoe storage', shoe:'Shoe storage', wardrobe:'Clothes storage for two', oshiire:'Clothes storage for two', jang:'Clothes storage for two', dining:'Table for two', kotatsu:'Table for two', soban:'Table for two', sofa:'Seats for two', cleaning:'Cleaning storage', pantry:'Food storage (pantry or kitchen cupboards)', nook:'Table for two', foldtable:'Table for two', bins:'Recycling bins (under the sink or separate)', washer:'Laundry: washer-dryer'};
     const met = new Set(readyForTwo().filter(x => x.ok).map(x => x.k));
     const miss = S.unplaced.filter(t => CAT[t] && !S.items.some(i => i.type === t) && !(needOf[t] && met.has(needOf[t])) && !['nightstand', 'divider', 'shelf', 'desk', 'stove', 'fridge'].includes(t)); if (miss.length) ck('warn', 'No room found for: ' + miss.map(t => CAT[t].label.toLowerCase()).join(', ') + '. Add them from Furnish, or pick smaller ones.'); }
   { const r2 = readyForTwo(); const miss = r2.filter(x => !x.ok); ck(miss.length ? 'warn' : 'ok', miss.length ? `Ready for two: ${r2.length - miss.length} of ${r2.length}, missing ${miss.map(x => x.k.toLowerCase()).join(', ')}` : 'Ready for two people, everything a couple needs is in'); }
@@ -463,8 +466,8 @@ function bracing(geo) {
 }
 
 /* beds must stay clear of every exit */
-const BED_EXIT_MIN = 1800;
-const BED_TYPES = ['bed160', 'bed140', 'bed90', 'tatamibed', 'wallbed'];
+const BED_EXIT_MIN = 1500;   // a full wheelchair turning circle between bed and exit
+const BED_TYPES = ['bed160', 'bed140', 'bed90', 'tatamibed', 'platformbed', 'wallbed'];
 function exitSegments(geo, openings) {
   return (openings || S.openings).filter(o => OPN[o.type].kind === 'door' || o.type === 'slide').map(o => { const f = opFrame(geo, o); if (!f) return null;
     return [add(f.a, mul(f.e.n, T)), add(f.b, mul(f.e.n, T))]; }).filter(Boolean);
@@ -535,7 +538,7 @@ function readyForTwo(st) {
   const style = (st.program && st.program.style) || 'standard';
   const pull = st.items.some(i => i.type === 'kitchen' && i.opt && i.opt.pullout);
   const L = [
-    {k:'Bed for two', ok:st.items.some(i => ['bed160', 'bed140', 'tatamibed', 'wallbed', 'sofabed'].includes(i.type)), add:style === 'japanese' ? 'tatamibed' : 'bed160'},
+    {k:'Bed for two', ok:st.items.some(i => ['bed160', 'bed140', 'tatamibed', 'platformbed', 'wallbed', 'sofabed'].includes(i.type)), add:style === 'japanese' ? 'tatamibed' : 'bed160'},
     {k:'Kitchen with sink and hob', ok:has('kitchen'), add:'kitchen'},
     {k:'Fridge', ok:st.items.some(i => i.type === 'fridge' || (i.type === 'kitchen' && i.opt && i.opt.fridge)), add:'fridge'},
     {k:'Table for two', ok:has('dining', 'foldtable', 'kotatsu', 'soban', 'desk', 'nook') || pull, add:style === 'japanese' ? 'kotatsu' : style === 'korean' ? 'soban' : 'dining'},
@@ -545,9 +548,9 @@ function readyForTwo(st) {
     {k:'Hand basin', ok:has('basin', 'accbasin'), add:'basin'},
     {k:'Laundry: washer-dryer', ok:has('washer') || st.items.some(i => i.type === 'kitchen' && i.opt && i.opt.washer), add:'washer'},
     {k:'Drying rack', ok:has('dryrack', 'washer') || st.items.some(i => i.type === 'kitchen' && i.opt && i.opt.washer), add:'dryrack'},
-    {k:'Clothes storage for two', ok:has('wardrobe', 'oshiire', 'jang', 'rail') || (has('bed160', 'bed140', 'tatamibed') && count('overhead') >= 2), add:style === 'japanese' ? 'oshiire' : style === 'korean' ? 'jang' : 'wardrobe'},
+    {k:'Clothes storage for two', ok:has('wardrobe', 'oshiire', 'jang', 'rail', 'platformbed') || (has('bed160', 'bed140', 'tatamibed', 'wallbed') && count('overhead') >= 2), add:style === 'japanese' ? 'oshiire' : style === 'korean' ? 'jang' : 'wardrobe'},
     {k:'Shoe storage', ok:has('getabako', 'shoe', 'benchstore', 'shoeslim'), add:'getabako'},
-    {k:'Food storage (pantry or kitchen cupboards)', ok:has('pantry') || st.items.some(i => i.type === 'kitchen' && i.w >= 1800), add:'pantry'},
+    {k:'Food storage (pantry or kitchen cupboards)', ok:has('pantry') || st.items.some(i => i.type === 'kitchen' && (i.w >= 1500 || (i.w >= 1200 && count('overhead') >= 2))), add:'pantry'},
     {k:'Cleaning storage', ok:has('cleaning', 'cleanrail'), add:'cleaning'},
     {k:'Recycling bins (under the sink or separate)', ok:has('bins', 'kitchen'), add:'bins'},
     {k:'Energy cabinet', ok:has('energy'), add:'energy'},
@@ -594,6 +597,7 @@ function opCost(o) {
   const P = S.prices, sp = OPN[o.type], tri = S.spec.glazing === 'triple';
   if (o.type === 'door') return P.door_ext;
   if (o.type === 'door_wide') return P.door_wide ?? 300;
+  if (o.type === 'glasswall') return (P.win_dbl || 110) * (o.w * o.h / 1e6) * (S.spec.glazing === 'triple' ? (P.win_tri || 180) / (P.win_dbl || 110) : 1) + 120;
   if (o.type === 'door_glass') return P.door_glass;
   if (o.type === 'slide') return (tri ? P.slide_tri : P.slide_dbl) * Math.max(.7, o.w / 2000);
   return Math.max(140, (tri ? P.win_tri : P.win_dbl) * o.w * o.h / 1e6);

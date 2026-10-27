@@ -553,6 +553,14 @@ body.mode-site::before{content:""; position:fixed; inset:0 0 auto; height:env(sa
 @media (max-width:480px){ .compass{top:62px} }
 .ready li{padding:5px 0} .rk{width:22px; height:22px; border-radius:50%; display:inline-grid; place-items:center; font-size:12px; font-weight:800; flex:0 0 auto}
 .rk.ok{background:var(--act-soft); color:var(--ok)} .rk.no{background:var(--wool-soft); color:var(--ink)}
+.cl-view{background:var(--sheet); border:1px solid var(--line); border-radius:12px; padding:6px; margin:8px 0}
+.cl-view.big{max-height:70vh; overflow:auto} .cl-view.big .cl-svg{min-height:55vh}
+.cl-svg{width:100%; height:auto; display:block; max-height:520px}
+.cl-out{fill:none; stroke:var(--act); stroke-width:60; stroke-linejoin:round; opacity:.55} .cl-out.first{stroke:var(--wool); opacity:.9}
+.cl-num{font:800 520px Archivo, Arial, sans-serif; fill:var(--act); opacity:.25}
+.cl-card{padding:16px}
+.cl-home{animation:popIn .45s cubic-bezier(.2,.8,.2,1) both; animation-delay:calc(var(--i) * 70ms)}
+@media (prefers-reduced-motion: reduce){ .cl-home{animation:none} }
 </style>
 </head>
 <body class="mode-site">
@@ -560,14 +568,14 @@ body.mode-site::before{content:""; position:fixed; inset:0 0 auto; height:env(sa
   <div class="sprog" aria-hidden="true"><i id="sprog"></i></div>
   <nav class="snav" aria-label="Main">
     <a class="slogo" href="#" data-go="top" aria-label="Microhome home"><svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><path d="M4 9 9 4h14v10l5 4v10H11v-8H4z" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/><path d="M11 14h12" stroke="var(--wool)" stroke-width="2.4"/></svg><span data-brand>Microhome</span></a>
-    <div class="slinks"><a href="#" data-go="access">Accessible</a><a href="#" data-go="how">How it works</a><a href="#" data-go="homes">Homes</a><a href="#" data-go="included">What’s included</a><a href="#" data-go="faq">Questions</a></div>
+    <div class="slinks"><a href="#" data-go="access">Wheelchair</a><a href="#" data-go="how">How it works</a><a href="#" data-go="homes">Homes</a><a href="#" data-go="included">What’s included</a><a href="#" data-go="faq">Questions</a></div>
     <button class="btn primary" data-open-app>Design yours</button>
   </nav>
   <header class="hero" id="s-top">
     <div class="hero-copy">
-      <p class="eyebrow">Accessible off-grid home · 24.9 m² · two modules</p>
+      <p class="eyebrow">Off-grid home · 24.94 m² · two modules · gable steel roof</p>
       <h1>A whole home in 25&nbsp;m². <span class="hl">Built in a factory,</span> standing in a day.</h1>
-      <p class="lead2">Two modules, step-free inside, wide enough for a wheelchair. The bed and table fold away to open the floor. Design yours and watch the 3D model and price update as you go. Solar power, rainwater and fresh air are built in.</p>
+      <p class="lead2">Two modules on a 5.2 × 5.2 m footprint, one front door, a raised sleeping platform full of storage and a lofty gable steel roof. Design yours and watch the 3D model and price update as you go. Solar power, rainwater and fresh air are built in.</p>
       <div class="hero-cta"><button class="btn primary big-btn" data-open-app>Design your home</button><button class="btn big-btn" data-go="homes">See the homes</button></div>
       <p class="from" id="heroFrom">Estimated from <b>…</b>, factory-direct</p>
       <p class="resume" id="heroResume" hidden><button class="linkbtn" data-open-app>Continue your saved design →</button></p>
@@ -575,12 +583,12 @@ body.mode-site::before{content:""; position:fixed; inset:0 0 auto; height:env(sa
     <div class="hero-art-wrap"><div class="hero-art" aria-hidden="true"><div class="hero-plan" id="heroPlan"></div><div class="hero-tag" id="heroTag"></div></div>
       <div class="chip c1" aria-hidden="true"><i>☀</i><span><b>1.4 kWp</b> solar</span></div>
       <div class="chip c2" aria-hidden="true"><i>💧</i><span><b>3 weeks</b> of water</span></div>
-      <div class="chip c3" aria-hidden="true"><i>♿</i><span><b>Step-free</b>, 1 m doors</span></div></div>
+      <div class="chip c3" aria-hidden="true"><i>🛏</i><span><b>900 L</b> under the bed</span></div></div>
   </header>
   <section class="stats" aria-label="Key facts">
-    <div><b>24.9 m²</b><span>a 16.5 m² and an 8.4 m² module</span></div>
+    <div><b>24.94 m²</b><span>a 16.12 m² and an 8.82 m² module</span></div>
     <div><b>2 modules</b><span>one joint, about a day on site</span></div>
-    <div><b>Wheelchair-ready</b><span>1 m doors, roll-in shower, ramp or lift</span></div>
+    <div><b>Raised platform</b><span>bed on top, about 900 L of storage below</span></div>
     <div><b>Off-grid</b><span>solar, battery and rainwater included</span></div>
   </section>
   <div class="ticker" aria-hidden="true"><div class="tk-track"><span>Galvanized steel frame</span><span>Rockwool insulation</span><span>Roof solar</span><span>LiFePO4 battery</span><span>Rainwater cistern</span><span>Greywater planter</span><span>Heat-recovery fresh air</span><span>Screw-pile foundations</span><span>Two trucks, one day</span><span>Galvanized steel frame</span><span>Rockwool insulation</span><span>Roof solar</span><span>LiFePO4 battery</span><span>Rainwater cistern</span><span>Greywater planter</span><span>Heat-recovery fresh air</span><span>Screw-pile foundations</span><span>Two trucks, one day</span></div></div>
@@ -591,7 +599,7 @@ body.mode-site::before{content:""; position:fixed; inset:0 0 auto; height:env(sa
         <h2 class="asm-h">Built in a factory. Standing in a day.</h2>
         <ol class="asm-steps">
           <li data-s="0"><b>Made indoors</b><span>Each module is welded, insulated, wired and plumbed in the factory, finished down to the furniture.</span></li>
-          <li data-s="1"><b>On the road</b><span>The 2.0 m module travels normally; the 3.0 m module goes as a permitted wide load.</span></li>
+          <li data-s="1"><b>On the road</b><span>The 2.1 m module travels normally; the 3.1 m module goes as a permitted wide load.</span></li>
           <li data-s="2"><b>Bolted together</b><span>A crane sets both modules on screw piles and the single joint bolts from inside. About one day.</span></li>
           <li data-s="3"><b>Power and water from day one</b><span>Solar panels go on the roof, rainwater runs to the cistern. Move in.</span></li>
         </ol>
@@ -600,12 +608,12 @@ body.mode-site::before{content:""; position:fixed; inset:0 0 auto; height:env(sa
     </div>
   </section>
   <section class="ssec" id="s-access">
-    <div class="shead"><h2>Accessible by design</h2><p>Built so a wheelchair user can live here on their own.</p></div>
+    <div class="shead"><h2>Wheelchair version</h2><p>The same two modules, set up so a wheelchair user can live here on their own.</p></div>
     <div class="feat">
-      <div><svg class="ficon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V4h10v16M14 20h6M10 12h1"/></svg><h3>Step-free way in</h3><p>Two 1 m wide doors with level thresholds, and a 1:12 ramp or a platform lift up to the floor.</p></div>
+      <div><svg class="ficon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V4h10v16M14 20h6M10 12h1"/></svg><h3>Step-free way in</h3><p>A 1 m wide door with a level threshold, and a 1:12 ramp or a platform lift up to the floor.</p></div>
       <div><svg class="ficon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2"/></svg><h3>Room to turn</h3><p>80 cm clear paths to everything and a 1.5 m turning circle in both the living area and the bathroom.</p></div>
       <div><svg class="ficon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14v3a5 5 0 0 1-5 5h-4a5 5 0 0 1-5-5zM7 12V5a2 2 0 0 1 4 0"/></svg><h3>Bathroom that works</h3><p>Roll-in shower with a level floor, grab bars beside the toilet, a wall-hung basin and a kitchen sink you can roll under.</p></div>
-      <div><svg class="ficon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 18h18M5 18V8h14v10M5 13h14"/></svg><h3>Floor that opens up</h3><p>A wall bed and a fold-down table give back the floor by day. Overhead cabinets hold the rest.</p></div>
+      <div><svg class="ficon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 18h18M5 18V8h14v10M5 13h14"/></svg><h3>Floor that opens up</h3><p>A regular bed instead of the raised platform, a deeper bathroom, and overhead cabinets for the rest.</p></div>
     </div>
   </section>
   <section class="ssec" id="s-how">
@@ -619,9 +627,13 @@ body.mode-site::before{content:""; position:fixed; inset:0 0 auto; height:env(sa
     </ol>
   </section>
   <section class="ssec" id="s-homes">
-    <div class="shead"><h2>Our homes</h2><p>The accessible two-module home, and bigger combinations of the same two modules. Many more in the designer.</p></div>
+    <div class="shead"><h2>Our homes</h2><p>Our home as rendered, its wheelchair version, and bigger combinations of the same two modules. Many more in the designer.</p></div>
     <div class="sgrid" id="siteHomes"></div>
     <p class="center"><button class="btn primary big-btn" data-open-app>Open the designer</button></p>
+  </section>
+  <section class="ssec" id="s-hood">
+    <div class="shead"><h2>Grow into a neighbourhood</h2><p>The step in each home fits the next one. Six homes interlock into a compact cluster, each still complete on its own.</p></div>
+    <div class="flow-card cl-card" id="siteCluster"></div>
   </section>
   <section class="ssec" id="s-included">
     <h2>What’s included</h2>
@@ -640,8 +652,8 @@ body.mode-site::before{content:""; position:fixed; inset:0 0 auto; height:env(sa
   <section class="ssec">
     <h2>Specifications</h2>
     <div class="spec-wrap"><table class="spec">
-      <tr><th>Floor area</th><td>24.9 m²: a 16.5 m² module (3.0 × 5.5 m) and an 8.4 m² module (2.0 × 4.2 m). Combine them up to 41.4 m²</td></tr>
-      <tr><th>Accessibility</th><td>1 m doors with level thresholds, 80 cm paths, 1.5 m turning circles, roll-in shower, grab bars, knee space at basin and sink, ramp or platform lift</td></tr><tr><th>Transport</th><td>The 3.0 m module needs a wide-load permit, the 2.0 m module does not</td></tr>
+      <tr><th>Floor area</th><td>24.94 m²: a 16.12 m² module (3.1 × 5.2 m) and an 8.82 m² module (2.1 × 4.2 m) on a 5.2 × 5.2 m footprint. Combine them up to 41.06 m²</td></tr>
+      <tr><th>Doors</th><td>One outside door; a second door can link another module or add a back exit</td></tr><tr><th>Roof</th><td>Gable roof on steel trusses with a central post, or a flat roof</td></tr><tr><th>Wheelchair version</th><td>1 m door with level threshold, 80 cm paths, 1.5 m turning circles, roll-in shower, grab bars, knee space at basin and sink, ramp or platform lift</td></tr><tr><th>Transport</th><td>The 3.1 m module needs a wide-load permit, the 2.1 m module does not</td></tr>
       <tr><th>Frame</th><td>Galvanized steel, 100 × 100 mm pillars. Stackable 4-storey frame on request</td></tr>
       <tr><th>Walls</th><td>100 mm rockwool between studs plus 50 mm outer rockwool board, about U 0.3</td></tr>
       <tr><th>Floor and roof</th><td>Two layers of 100 mm rockwool in the floor, tapered insulation and EPDM on the roof</td></tr>
@@ -658,7 +670,7 @@ body.mode-site::before{content:""; position:fixed; inset:0 0 auto; height:env(sa
       <details><summary>What is not included?</summary><p>Land, permits, site clearing, access for trucks and a crane, import duties and local taxes. The designer shows transport for the distance you enter.</p></details>
       <details><summary>Do I need planning permission?</summary><p>It depends on where you build. Homes under about 25 m² have simpler rules in many places, but always check with your local authority before you order.</p></details>
       <details><summary>Can it really run off-grid?</summary><p>Yes. The designer sizes solar, battery and water storage to your household and shows how many days you can go without sun or rain. In cloudy winters, plan a backup such as a wood stove.</p></details>
-      <details><summary>Is it really wheelchair accessible?</summary><p>Yes. The main design keeps 80 cm paths, a 1.5 m turning circle in the living area and bathroom, a roll-in shower and 1 m doors, and the designer checks all of it as you change things. Because the floor sits on screw piles, step-free entry needs a ramp or a platform lift, both offered.</p></details>
+      <details><summary>Is it really wheelchair accessible?</summary><p>The wheelchair version is. It keeps 80 cm paths, a 1.5 m turning circle in the living area and bathroom, a roll-in shower and a 1 m door, and the designer checks all of it as you change things. Our main render has a raised sleeping platform and a compact shower room, which are not wheelchair-friendly. Because the floor sits on screw piles, step-free entry needs a ramp or a platform lift, both offered.</p></details>
       <details><summary>Can homes be joined or stacked?</summary><p>Wings bolt to the central module, and the stackable frame option is built for up to four storeys. Ask in your quote request.</p></details>
       <details><summary>Can I save or share my design?</summary><p>Yes. Your design is kept in your browser, and you can download it as a file or copy a code to send to someone.</p></details>
     </div>

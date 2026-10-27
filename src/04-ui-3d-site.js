@@ -122,6 +122,7 @@ const TABS = [
   ['furnish', 'Furnish', '<path d="M4 12V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4"/><path d="M3 12h18v5H3zM5 17v3M19 17v3"/>'],
   ['systems', 'Energy and water', '<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>'],
   ['finishes', 'Finishes', '<path d="M4 4h16v6H4zM12 10v4M9 14h6v7H9z"/>'],
+  ['cluster', 'Cluster', '<rect x="3" y="3" width="8" height="10"/><rect x="13" y="7" width="8" height="10"/><rect x="6" y="15" width="8" height="6"/>'],
   ['prices', 'Prices', '<path d="M12 2v20M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>'],
 ];
 function renderRail() {
@@ -140,6 +141,17 @@ function renderPanel() {
   const p = $('#panel'); let h = '';
   const fresh = G.lastTab !== G.tab; G.lastTab = G.tab;
   const t = G.tab;
+  if (t === 'cluster') {
+    const n = G.clusterN || 6;
+    h += `<h2>Cluster</h2><p class="lead">Interlock several homes into a neighbourhood. Each home is complete on its own; rotated and mirrored copies fit into each other’s steps and share walls.</p>`;
+    h += `<div class="field stack"><label>Homes</label><div class="seg">${[2, 3, 4, 6, 8].map(k => `<button data-cl="${k}" aria-pressed="${k === n}">${k}</button>`).join('')}</div></div>`;
+    const cl = clusterLayout(S, n), cs = clusterStats(S, cl);
+    G.cluster = cl;
+    h += `<div class="cl-view" id="clView">${clusterSVG(S, cl)}</div>`;
+    h += `<p><button class="btn" data-act="clbig">View large</button></p>`;
+    h += `<table class="ptable"><tr><td>Homes</td><td>${cs.n}${cs.n < n ? ` (only ${cs.n} fit snugly)` : ''}</td></tr><tr><td>Total floor area</td><td>${cs.area.toFixed(1)} m²</td></tr><tr><td>Site needed, at least</td><td>${cs.site.toFixed(0)} m²</td></tr><tr><td>Walls touching a neighbour</td><td>${cs.shared.toFixed(1)} m</td></tr><tr><td>Price per home</td><td>${money(cs.unit)}</td></tr><tr><td>Shared crane and crew</td><td>−${money(cs.save)}</td></tr><tr><td><b>All ${cs.n} homes</b></td><td><b>${money(cs.total)}</b></td></tr></table>`;
+    h += `<p class="note">Uses your current design. Each home keeps its own walls, so homes can be sold, moved or added later. Touching walls cut wind and heat loss.</p>`;
+  }
   if (t === 'layouts') {
     h += `<h2>Start from a layout</h2><p class="lead">Every layout is complete and fully editable. Pick one, then change anything.</p>`;
     if (!G.thumbs) { const c = loadThumbCache(); if (c) G.thumbs = c; else { G.thumbs = []; setTimeout(buildThumbsStep, 60); } }
@@ -176,7 +188,7 @@ function renderPanel() {
       h += `<div class="wing ${w.on ? '' : 'off'}"><h3 style="margin-top:0">${sd === 'left' ? 'Left' : 'Right'} wing</h3>${chk('Include this wing', `shape.${sd}.on`)}`;
       h += `<p class="note">Quick shapes</p><div style="display:flex; gap:4px; flex-wrap:wrap; margin-bottom:6px">${WING_Q.map((q, i) => `<button class="btn small" data-wingq="${sd}:${i}">${q.l}</button>`).join('')}</div>`;
       if (w.on) {
-        h += rng('Width', `shape.${sd}.w`, 900, 2200, 50, ' mm');
+        h += rng('Width', `shape.${sd}.w`, 900, 3000, 50, ' mm');
         h += `<p class="note">Positions are measured from the top of the central module. The inner side touches the central module, the outer side is the outside wall. Different values make slanted ends.</p>`;
         h += rng('Inner side starts', `shape.${sd}.inTop`, -2000, L - 600, 100, ' mm');
         h += rng('Inner side ends', `shape.${sd}.inBot`, 600, L + 2000, 100, ' mm');
@@ -214,7 +226,7 @@ function renderPanel() {
   if (t === 'furnish') {
     const pr = S.program;
     h += `<h2>Furnish</h2><p class="lead">Tell it what you need and it arranges everything. Lock pieces you like, then arrange again.</p>`;
-    h += `<div class="box">${chk('Wheelchair accessible: wide doors, 80 cm paths, roll-in shower, grab bars, knee-space basin and kitchen', 'program.access')}${chk('Second exit door', 'program.secondExit')}</div>`;
+    h += `<div class="box">${chk('Wheelchair accessible: wide doors, 80 cm paths, roll-in shower, grab bars, knee-space basin and kitchen', 'program.access')}${chk('Second door: links another module, or adds a back exit', 'program.secondExit')}</div>`;
     if (pr.access && S.site.entry === 'steps') h += `<p class="note" style="color:var(--warn)">Add a ramp or lift under Shape, Getting in, for step-free entry.</p>`;
     h += `<div class="field stack"><label>Living style</label>${seg('program.style', [['standard', 'Standard'], ['japanese', 'Japanese'], ['korean', 'Korean']])}</div>`;
     h += `<p class="note">${({standard:'Bed, wardrobe, sofa and dining table.', japanese:'Tatami platform bed with drawers, oshiire futon closet, kotatsu table with floor chairs, ofuro soaking tub.', korean:'Bed, jang chest, folding low table (bapsang). Try ondol floor heating in Energy and water.'})[pr.style || 'standard']}</p>`;
@@ -271,6 +283,8 @@ function renderPanel() {
   if (t === 'finishes') {
     h += `<h2>Finishes</h2><p class="lead">Pick a level, or set each part. The cheapest set still keeps the house warm and dry.</p>`;
     h += `<p style="display:flex; gap:6px; flex-wrap:wrap"><button class="btn" data-spec="eco">Lowest cost</button><button class="btn" data-spec="std">Balanced</button><button class="btn" data-spec="lux">Comfort</button></p>`;
+    h += sel('Roof shape', 'shape.roof', [['flat', 'Flat, tapered insulation'], ['gable', 'Gable, steel trusses (as in our render)']]);
+    h += sel('Wall thickness', 'shape.wallT', [['200', '200 mm'], ['250', '250 mm, warmer (as in the two-module design)']]);
     h += sel('Steel frame', 'spec.frame', [['light', 'Single storey, lighter steel'], ['stack', 'Stackable to 4 storeys']]);
     h += sel('Glazing', 'spec.glazing', [['double', 'Double, lower cost'], ['triple', 'Triple, warmer']]);
     h += sel('Outside cladding', 'spec.cladding', [['steel', 'Steel sheet, lowest cost'], ['fibre', 'Fibre-cement'], ['timber', 'Timber boards']]);
@@ -305,6 +319,21 @@ function onBind(el) {
   if (el.tagName === 'SELECT' && /^\d+$/.test(v)) v = Number(v);
   if (path === 'site.rate' && !(v > 0)) v = null;
   snapshot(); set(S, path, v);
+  if (path === 'program.secondExit') {
+    const dT = S.program.access ? 'door_wide' : 'door';
+    if (v) {
+      const d = S.hints.extraDoor, geo = G.geo; let e = d && geo.ext.filter(x => (x.mod === d.mod || x.mod.startsWith(d.mod)) && dot(mul(x.n, -1), d.out) > .9).sort((a, b) => b.len - a.len)[0];
+      if (e) { const ax = Math.abs(d.out[0]) > .5 ? 1 : 0, w = OPN[dT].w; const o = newOpening(dT, e.key, clamp((e.u[ax] >= 0 ? d.at : 1 - d.at) * e.len, w / 2 + 150, e.len - w / 2 - 150), {link:true}); S.openings.push(o);
+        const g2 = buildGeo(S.shape), v2 = validate(g2);
+        if (Object.values(v2.items).some(x => x.length)) { autoArrange('furn'); toast('Second door added where another module can join. Furniture re-arranged around it.'); }
+        else toast('Second door added where another module can join'); }
+      else { commit(true); addOpening(dT); const o = S.openings[S.openings.length - 1]; if (o) o.link = true; return; }
+    } else {
+      const doors = S.openings.filter(o => OPN[o.type].kind === 'door');
+      const rm = doors.filter(o => o.link); if (!rm.length && doors.length > 1) rm.push(doors[doors.length - 1]);
+      S.openings = S.openings.filter(o => !rm.includes(o)); if (rm.length) toast('Second door removed');
+    }
+  }
   if (path === 'site.cur') S.site.rate = null;
   if (path.startsWith('shape.')) normShape();
   commit(true);
@@ -322,8 +351,8 @@ const WING_Q = [
   {l:'Diagonal split', f:L => ({on:true, inTop:0, inBot:L, outTop:0, outBot:L, split:{type:'diag', a:2200, b:3200}})},
 ];
 function normShape() {
-  const sh = S.shape; sh.L = clamp(sh.L, 3600, 6600); sh.Wc = clamp(sh.Wc, 2000, 3000);
-  ['left', 'right'].forEach(k => { const w = sh[k]; w.w = clamp(w.w, 900, 2200);
+  const sh = S.shape; sh.L = clamp(sh.L, 3600, 6600); sh.Wc = clamp(sh.Wc, 2000, 3000); sh.wallT = +sh.wallT || 200;
+  ['left', 'right'].forEach(k => { const w = sh[k]; w.w = clamp(w.w, 900, 3000);
     w.split = w.split || {type:'none', a:2200, b:3200};
     w.inTop = clamp(w.inTop, -2000, sh.L - 600); w.inBot = clamp(w.inBot, w.inTop + 600, sh.L + 2000);
     if (Math.min(w.inBot, sh.L) - Math.max(w.inTop, 0) < 600) { w.inTop = Math.min(w.inTop, sh.L - 600); w.inBot = Math.max(w.inBot, w.inTop + 600); }
@@ -378,7 +407,7 @@ function initPanel() {
     if (b.dataset.set === 'program.style') { snapshot(); S.program.style = b.dataset.val; const f = autoArrange('furn'); G.motion = true; commit(true); toast(({standard:'Standard style', japanese:'Japanese style', korean:'Korean style'})[b.dataset.val] + (f.length ? '. No room for: ' + f.map(t => CAT[t] ? CAT[t].label.toLowerCase() : t).join(', ') : ', everything placed')); return; }
     if (b.dataset.set) { snapshot(); set(S, b.dataset.set, b.dataset.set === 'site.north' ? +b.dataset.val : b.dataset.val); if (b.dataset.set.startsWith('shape.')) normShape(); commit(true); return; }
     if (b.dataset.preset) { snapshot(); const th = G.thumbs && G.thumbs[+b.dataset.preset]; let f;
-      if (th && th.state) { const st = JSON.parse(JSON.stringify(th.state)); Object.assign(S, st); S.unplaced = []; f = []; } else f = applyPreset(PRESETS[+b.dataset.preset]);
+      if (th && th.state) { const st = JSON.parse(JSON.stringify(th.state)); const sp = st.siteP || PRESETS[+b.dataset.preset].site; delete st.siteP; Object.assign(S, st); if (sp) Object.assign(S.site, sp); S.unplaced = []; f = []; } else f = applyPreset(PRESETS[+b.dataset.preset]);
       G.sel = null; G.variants = null; G.motion = true; commit(true); const tv = G.view; G.view = null; fitView(); const to = G.view; G.view = tv; animateView(to); reset3D(); if (isPhone()) setTimeout(() => switchView('plan'), 30); const lim = S.site.limit || 0; toast(lim && G.geo.area > lim + 1e-4 ? `This one is ${G.geo.area.toFixed(1)} m², over your ${lim} m² limit. Change the limit in Shape.` : f.length ? 'Some items did not fit: ' + f.map(t => CAT[t] ? CAT[t].label.toLowerCase() : t).join(', ') : 'Layout applied'); return; }
     if (b.dataset.variant) { snapshot(); S = JSON.parse(JSON.stringify(G.variants[+b.dataset.variant].st)); G.sel = null; G.motion = true; commit(true); reset3D(); toast('Arrangement applied. Undo brings back your plan.'); if (isPhone()) switchView('plan'); return; }
     if (b.dataset.wingq) { const [sd, i] = b.dataset.wingq.split(':'); snapshot(); const q = WING_Q[+i]; const L = S.shape.L;
@@ -386,6 +415,8 @@ function initPanel() {
     if (b.dataset.add) { addItem(b.dataset.add); return; }
     if (b.dataset.addop) { addOpening(b.dataset.addop); return; }
     if (b.dataset.selop) { select({kind:'op', id:b.dataset.selop}); return; }
+    if (b.dataset.cl) { G.clusterN = +b.dataset.cl; renderPanel(); return; }
+    if (b.dataset.act === 'clbig') { const d = $('#dlg'); d.innerHTML = `<h3>${G.cluster.homes.length} homes interlocked</h3><div class="cl-view big">${clusterSVG(S, G.cluster)}</div><p><button class="btn primary" data-d="close">Close</button></p>`; if (!d.open) d.showModal(); return; }
     if (b.dataset.plevel) { snapshot(); const k = +b.dataset.plevel, d = defaultState(); Object.keys(d.prices).forEach(p => S.prices[p] = p === 'contingency' ? d.prices[p] : Math.round(d.prices[p] * k * 100) / 100); Object.keys(d.iprices).forEach(p => S.iprices[p] = Math.round(d.iprices[p] * k)); commit(true); toast('Prices set to ' + b.textContent.toLowerCase()); return; }
     if (b.dataset.spec) { snapshot(); S.spec = Object.assign({}, S.spec, ({eco:{glazing:'double', cladding:'steel', insul:'std', finish:'ply', frame:'light'}, std:{glazing:'double', cladding:'fibre', insul:'std', finish:'vinyl'}, lux:{glazing:'triple', cladding:'timber', insul:'std', finish:'lino'}})[b.dataset.spec]); commit(true); return; }
     const a = b.dataset.act;
@@ -410,7 +441,7 @@ function layCard(i) {
   const th = G.thumbs && G.thumbs[i], p = PRESETS[i];
   if (!th) return `<div class="skel"></div><div class="nm">${esc(p.name)}</div><div class="sub">Drawing…</div>`;
   const lim = S.site.limit || 0;
-  if (th.cost == null && th.state) { const keepS = S; S = Object.assign({}, th.state, {prices:keepS.prices, iprices:keepS.iprices, spec:keepS.spec, sys:keepS.sys, site:keepS.site}); try { th.cost = costs(buildGeo(S.shape)).total; } finally { S = keepS; } }
+  if (th.cost == null && th.state) { const keepS = S; S = Object.assign({}, th.state, {prices:keepS.prices, iprices:keepS.iprices, spec:keepS.spec, sys:keepS.sys, site:Object.assign({}, keepS.site, th.state.siteP || {})}); try { th.cost = costs(buildGeo(S.shape)).total; } finally { S = keepS; } }
   return `${th.svg}<div class="nm">${esc(p.name)}</div><div class="sub">${th.area.toFixed(1)} m²${lim && th.area > lim + 1e-4 ? ' (over limit)' : ''}, ${money(th.cost)}, ${th.mods} module${th.mods > 1 ? 's' : ''}</div>`;
 }
 const THUMB_KEY = 'mhb-thumbs-v6';
@@ -421,14 +452,14 @@ function buildThumbsStep() {
   const i = G.thumbs.length;
   if (i >= PRESETS.length) { try { localStorage.setItem(THUMB_KEY, JSON.stringify({n:PRESETS.length, items:G.thumbs.map(t => ({svg:t.svg, area:t.area, mods:t.mods, state:t.state}))})); } catch (e) {} return; }
   const keep = JSON.stringify(S);
-  try { applyPreset(PRESETS[i]); const g = buildGeo(S.shape); G.thumbs.push({svg:miniSVG(S), area:g.area, cost:costs(g).total, mods:g.mods.length, state:{shape:S.shape, items:S.items, openings:S.openings, hints:S.hints, program:S.program}}); }
+  try { applyPreset(PRESETS[i]); const g = buildGeo(S.shape); G.thumbs.push({svg:miniSVG(S), area:g.area, cost:costs(g).total, mods:g.mods.length, state:{shape:S.shape, items:S.items, openings:S.openings, hints:S.hints, program:S.program, siteP:PRESETS[i].site || null}}); }
   catch (e) { G.thumbs.push({svg:'', area:0, cost:0, mods:0}); }
   S = JSON.parse(keep); G.geo = buildGeo(S.shape);
   const el = document.getElementById('lay-' + i); if (el) { el.innerHTML = layCard(i); el.classList.add('pop'); }
   (window.requestIdleCallback || setTimeout)(buildThumbsStep, {timeout:200});
 }
 /* ======================= BETTER ARRANGEMENTS ======================= */
-const ESS = ['kitchen', 'bed160', 'bed140', 'bed90', 'tatamibed', 'wallbed', 'energy', 'shower', 'bath', 'ofuro', 'toilet', 'wc', 'basin', 'sofabed', 'accshower', 'acctoilet', 'accbasin'];
+const ESS = ['kitchen', 'bed160', 'bed140', 'bed90', 'tatamibed', 'platformbed', 'wallbed', 'energy', 'shower', 'bath', 'ofuro', 'toilet', 'wc', 'basin', 'sofabed', 'accshower', 'acctoilet', 'accbasin'];
 function scoreLayout(st, failed) {
   const keepS = S; S = st;
   const g = buildGeo(st.shape), why = [], warn = [];
@@ -527,7 +558,7 @@ function varStep() {
 function badness() {
   const g = buildGeo(S.shape), v = validate(g), has = (...t) => S.items.some(i => t.includes(i.type));
   let n = Object.values(v.items).filter(x => x.length).length + Object.values(v.ops).filter(x => x.length).length;
-  [['bed160', 'bed140', 'bed90', 'tatamibed', 'wallbed', 'sofabed'], ['kitchen'], ['toilet', 'wc', 'acctoilet'], ['shower', 'bath', 'ofuro', 'accshower'], ['basin', 'accbasin']].forEach(t => { if (!has(...t)) n += 10; });
+  [['bed160', 'bed140', 'bed90', 'tatamibed', 'platformbed', 'wallbed', 'sofabed'], ['kitchen'], ['toilet', 'wc', 'acctoilet'], ['shower', 'bath', 'ofuro', 'accshower'], ['basin', 'accbasin']].forEach(t => { if (!has(...t)) n += 10; });
   const wk = walkCheck(g); if (wk) n += wk.unreachable.length;
   return n;
 }
@@ -717,7 +748,20 @@ function build3D() {
     });
   }
   // roof + PV
-  if (G.roof) {
+  if (G.roof && S.shape.roof === 'gable') {
+    const roofGrp = new THREE.Group(); root.add(roofGrp);
+    const b = geo.bbox, ov = 300, x0 = (b[0] - ov) * s, x1 = (b[2] + ov) * s, z0 = (b[1] - ov) * s, z1 = (b[3] + ov) * s;
+    const E = (WALL_H + 170) * s, half = (x1 - x0) / 2, pitch = 25 * Math.PI / 180, rise = half * Math.tan(pitch), xc = (x0 + x1) / 2, depth = z1 - z0, Ls = half / Math.cos(pitch);
+    const roofM = mat(0x3A3F42), steel = mat(0x5C6468, {metalness:.4, roughness:.5});
+    [[1, x0 + half / 2], [-1, x1 - half / 2]].forEach(([sg, cx2]) => { const me = box(Ls, .08, depth, cx2, E + rise / 2, (z0 + z1) / 2, 0, roofM, roofGrp); me.rotation.z = sg * pitch;
+      for (let k = 1; k <= 4; k++) { const f = k / 5, px = sg > 0 ? x0 + half * f : x1 - half * f; box(.06, .06, depth, px, E + rise * f + .08, (z0 + z1) / 2, 0, steel, roofGrp); } });
+    const tri = new THREE.Shape([new THREE.Vector2(x0 + .3, E), new THREE.Vector2(x1 - .3, E), new THREE.Vector2(xc, E + rise - .05)]);
+    [z0 + .3, z1 - .3].forEach(z => { const g2 = new THREE.Mesh(new THREE.ShapeGeometry(tri), mat(0xEEF0EC, {side:THREE.DoubleSide})); g2.position.z = z; roofGrp.add(g2); });
+    box(.1, E + rise - FLOOR_H * s, .1, xc, (FLOOR_H * s + E + rise) / 2, (z0 + z1) / 2, 0, steel, roofGrp);
+    const n = Math.round(S.sys.pv / .45); for (let j = 0; j < n; j++) { const zz = z0 + .6 + (j % Math.floor((depth - 1) / 1.16)) * 1.16, row = Math.floor(j / Math.floor((depth - 1) / 1.16)); if (row > 1) break;
+      const f = .3 + row * .4, me = box(1.903 * .55, .035, 1.134, x1 - half * f, E + rise * f + .12, zz + .57, 0, mat(0x1C2A44, {roughness:.35, metalness:.3}), roofGrp); me.rotation.z = -pitch; }
+    if (G.anim3D === 'roof') anim3D(700, k => { roofGrp.position.y = (1 - k) * 2.2; }, 0, easeOut);
+  } else if (G.roof) {
     const roofGrp = new THREE.Group(); root.add(roofGrp); const keepRoot = root;
     geo.mods.forEach(m => { const me = extrude(m.poly, .17, (WALL_H + 170) * s, mat(0x3A3F42)); keepRoot.remove(me); roofGrp.add(me); });
     if (G.anim3D === 'roof') anim3D(700, k => { roofGrp.position.y = (1 - k) * 2.2; }, 0, easeOut);
@@ -744,7 +788,8 @@ function itemMesh(it, box) {
   const g = new THREE.Group(), w = it.w / 1000, d = it.d / 1000, t = it.type;
   const W = mat(0xF4F3EF), wood = mat(0xC79A63), dark = mat(0x2D3234), fab = mat(0x8EA58C), bed = mat(0xE9E4DA), grey = mat(0xA9AFB0), glass = mat(0xA6D3E2, {transparent:true, opacity:.35});
   const B = (bw, bh, bd, x, y, z, m) => box(bw, bh, bd, x, y, z, 0, m, g);
-  if (t === 'accshower') { B(w, .02, d, 0, .01, 0, mat(0xC9D6DA)); B(.02, 2, d, w/2, 1, 0, glass); B(.35, .04, .35, -w/2 + .2, .47, -d/2 + .2, wood); }
+  if (t === 'platformbed') { B(w, .45, d, 0, .225, 0, mat(0x6B4A33)); B(w - .3, .18, d - .9, 0, .54, -.3, bed); [-1, 0, 1].forEach(k => B(.9, .02, .22, 0, .15 + (k + 1) * .15, d/2 - .11 - (1 - k) * .22, W)); }
+  else if (t === 'accshower') { B(w, .02, d, 0, .01, 0, mat(0xC9D6DA)); B(.02, 2, d, w/2, 1, 0, glass); B(.35, .04, .35, -w/2 + .2, .47, -d/2 + .2, wood); }
   else if (t === 'acctoilet') { B(.4, .42, .5, 0, .21, .05, W); B(.4, .45, .18, 0, .5, -d/2 + .09, W); B(.03, .03, .6, -w/2 + .02, .75, 0, grey); B(.03, .03, .6, w/2 - .02, .75, 0, grey); }
   else if (t === 'accbasin') { B(w, .12, d, 0, .82, 0, W); B(w - .05, .6, .02, 0, 1.45, -d/2 + .01, glass); }
   else if (t === 'tatamibed') { B(w, .3, d, 0, .15, 0, wood); B(w - .06, .06, d - .06, 0, .33, 0, mat(0xCBC28A)); B(w - .3, .12, 1.0, 0, .42, .3, bed); B(w - .3, .1, .3, 0, .41, -d/2 + .3, W); }
@@ -839,6 +884,71 @@ function migrate(st) { const d = defaultState(); const out = Object.assign(d, st
   if (st.shape) { const L = st.shape.L || 5400; out.shape = Object.assign(defaultState().shape, st.shape); out.shape.left = convWing(Object.assign({}, st.shape.left), L); out.shape.right = convWing(Object.assign({}, st.shape.right), L); } ['hints', 'program', 'spec', 'sys', 'site'].forEach(k => out[k] = Object.assign(defaultState()[k], st[k] || {})); out.prices = Object.assign(d.prices, st.prices || {}); out.iprices = Object.assign(defaultState().iprices, st.iprices || {});
   if (st.pv !== 2) { const f = defaultState(); out.prices = f.prices; out.iprices = f.iprices; out.spec = Object.assign({}, out.spec, {frame:'light', cladding:'steel', finish:'ply'}); out.pv = 2; } out.items = (st.items || []).filter(i => CAT[i.type]); out.openings = (st.openings || []).filter(o => OPN[o.type]); return out; }
 
+/* ======================= CLUSTER ======================= */
+// Interlock copies of a home: try every rotation and mirror, snapping corners together,
+// and keep the placement that shares the most wall while staying compact.
+function clusterLayout(st, n) {
+  const geo = buildGeo(st.shape), base = geo.mods.map(m => m.poly);
+  const c0 = centroid(base.flat ? base.flat() : [].concat(...base));
+  const mods0 = base.map(P => P.map(p => [p[0] - c0[0], p[1] - c0[1]]));
+  const O = []; [1, -1].forEach(mir => [0, 90, 180, 270].forEach(r => O.push({mir, r})));
+  const xf = (p, o, t) => { const a = o.r * Math.PI / 180, c = Math.round(Math.cos(a)), s = Math.round(Math.sin(a)), x = p[0] * o.mir, y = p[1]; return [x * c - y * s + t[0], x * s + y * c + t[1]]; };
+  const edgesOf = P => P.map((a, i) => [a, P[(i + 1) % P.length]]);
+  const shared = (A, B) => { let L = 0;
+    for (const P of A) for (const [a, b] of edgesOf(P)) { const u = sub(b, a), lu = len(u); if (lu < 1) continue; const un = mul(u, 1 / lu);
+      for (const Q of B) for (const [c, d] of edgesOf(Q)) { const v = sub(d, c); if (Math.abs(un[0] * v[1] - un[1] * v[0]) > 1e-3 * len(v)) continue;
+        if (Math.abs(un[0] * (c[1] - a[1]) - un[1] * (c[0] - a[0])) > 3) continue;
+        const t1 = dot(sub(c, a), un), t2 = dot(sub(d, a), un), lo = Math.max(0, Math.min(t1, t2)), hi = Math.min(lu, Math.max(t1, t2)); if (hi > lo) L += hi - lo; } }
+    return L; };
+  // points just outside every door and window; doors must stay open to the outside, windows preferably too
+  const outPts = kind => (st.openings || []).filter(o => kind === 'door' ? OPN[o.type].kind === 'door' : OPN[o.type].kind !== 'door').map(o => { const f = opFrame(geo, o); if (!f) return null; const m = mul(add(f.a, f.b), .5); return sub(add(m, mul(f.e.n, -400)), c0); }).filter(Boolean);
+  const doors0 = outPts('door'), wins0 = outPts('win');
+  const homes = [{o:O[0], t:[0, 0], polys:mods0, doors:doors0, wins:wins0}];
+  let sharedTotal = 0;
+  for (let k = 1; k < n; k++) {
+    const all = homes.flatMap(h => h.polys), key = new Set(), verts = [];
+    all.flat().forEach(p => { const kk = Math.round(p[0]) + ',' + Math.round(p[1]); if (!key.has(kk)) { key.add(kk); verts.push(p); } });
+    const cc = centroid(all.flat()); let best = null;
+    for (const o of O) { const po = mods0.map(P => P.map(p => xf(p, o, [0, 0]))), vo = po.flat();
+      for (const vp of verts) for (const vn of vo) {
+        const t = sub(vp, vn), polys = po.map(P => P.map(p => add(p, t)));
+        if (polys.some(P => all.some(Q => overlap(P, Q, 5)))) continue;
+        const dn = doors0.map(p => add(xf(p, o, [0, 0]), t)), wn = wins0.map(p => add(xf(p, o, [0, 0]), t));
+        if (dn.some(p => all.some(Q => inPoly(p, Q))) || homes.some(hm => hm.doors.some(p => polys.some(Q => inPoly(p, Q))))) continue;
+        const winHit = wn.filter(p => all.some(Q => inPoly(p, Q))).length + homes.reduce((k, hm) => k + hm.wins.filter(p => polys.some(Q => inPoly(p, Q))).length, 0);
+        const sh = shared(polys, all); if (sh < 800) continue;
+        const cen = centroid(polys.flat()), d = Math.hypot(cen[0] - cc[0], cen[1] - cc[1]);
+        let bx0 = 1e9, by0 = 1e9, bx1 = -1e9, by1 = -1e9; for (const P of [...all, ...polys]) for (const q of P) { if (q[0] < bx0) bx0 = q[0]; if (q[0] > bx1) bx1 = q[0]; if (q[1] < by0) by0 = q[1]; if (q[1] > by1) by1 = q[1]; }
+        const bw = bx1 - bx0, bh = by1 - by0;
+        const sc = sh - (bw + bh) * .7 - Math.abs(bw - bh) * .5 - d * .15 - winHit * 900;
+        if (!best || sc > best.sc) best = {sc, sh, o, t, polys, dn, wn};
+      } }
+    if (!best) break;
+    homes.push({o:best.o, t:best.t, polys:best.polys, doors:best.dn, wins:best.wn}); sharedTotal += best.sh;
+  }
+  return {homes, geo, c0, shared:sharedTotal};
+}
+function clusterSVG(st, cl, opts = {}) {
+  const pts = cl.homes.flatMap(h => h.polys.flat()), xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+  const pad = 700, x0 = Math.min(...xs) - pad, y0 = Math.min(...ys) - pad, w = Math.max(...xs) - Math.min(...xs) + pad * 2, h = Math.max(...ys) - Math.min(...ys) + pad * 2;
+  const inner = planMarkup(st, cl.geo, {mini:true});
+  let g = '';
+  cl.homes.forEach((hm, i) => { const a = hm.o.r * Math.PI / 180, c = Math.round(Math.cos(a)), sn = Math.round(Math.sin(a)), m = hm.o.mir;
+    const tx = hm.t[0] - (c * m * cl.c0[0] - sn * cl.c0[1]), ty = hm.t[1] - (sn * m * cl.c0[0] + c * cl.c0[1]);
+    g += `<g class="cl-home" style="--i:${i}"><g transform="matrix(${c * m} ${sn * m} ${-sn} ${c} ${tx.toFixed(1)} ${ty.toFixed(1)})">${inner}</g>`;
+    g += hm.polys.map(P => `<polygon class="cl-out${i === 0 ? ' first' : ''}" points="${P.map(p => p[0].toFixed(0) + ',' + p[1].toFixed(0)).join(' ')}"/>`).join('');
+    const cen = centroid(hm.polys.flat()); if (opts.labels !== false) g += `<text class="cl-num" x="${cen[0].toFixed(0)}" y="${(cen[1] + 160).toFixed(0)}" text-anchor="middle">${i + 1}</text>`;
+    g += `</g>`; });
+  return `<svg class="cl-svg" viewBox="${x0.toFixed(0)} ${y0.toFixed(0)} ${w.toFixed(0)} ${h.toFixed(0)}" role="img" aria-label="${cl.homes.length} homes interlocked">${g}</svg>`;
+}
+function clusterStats(st, cl) {
+  const n = cl.homes.length, unit = costs(cl.geo).total, P = S.prices;
+  const save = (n - 1) * ((P.crane || 450) + (P.crew || 500)) * .5;
+  const pts = cl.homes.flatMap(h => h.polys.flat()), xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+  const site = (Math.max(...xs) - Math.min(...xs)) * (Math.max(...ys) - Math.min(...ys)) / 1e6;
+  return {n, area:cl.geo.area * n, unit, total:unit * n - save, save, site, shared:cl.shared / 1000};
+}
+
 /* ======================= COMPASS ======================= */
 function renderCompass() {
   const n = ((+S.site.north || 0) % 360 + 360) % 360, nd = $('#cpNeedle'), dg = $('#cpDeg');
@@ -897,7 +1007,7 @@ function smartSuggestions() {
   const lim = S.site.limit || 0;
   if (lim && geo.area > lim + 1e-4) push('bad', `Shrink to fit ${lim} m²`, `Now ${geo.area.toFixed(1)} m²`, () => { snapshot(); fit25(); G.motion = true; commit(true); });
   const miss = [];
-  if (!has('bed160', 'bed140', 'bed90', 'tatamibed', 'wallbed', 'sofabed')) miss.push('bed'); if (!has('kitchen')) miss.push('kitchen');
+  if (!has('bed160', 'bed140', 'bed90', 'tatamibed', 'platformbed', 'wallbed', 'sofabed')) miss.push('bed'); if (!has('kitchen')) miss.push('kitchen');
   if (!has('toilet', 'wc', 'acctoilet')) miss.push('toilet'); if (!has('shower', 'bath', 'ofuro', 'accshower')) miss.push('shower');
   if (miss.length) push('bad', 'Add what is missing', miss.join(', '), () => runAuto('furn'));
   if (v.checks.some(c => c.state === 'bad' && /from an exit/.test(c.text))) push('bad', 'Move the bed away from the exit', `Keep at least ${BED_EXIT_MIN / 1000} m clear`, () => runAuto('furn'));
@@ -1122,14 +1232,14 @@ function renderSiteHomes() {
   const box = $('#siteHomes'); if (!box) return;
   const items = PRESET_GROUPS[0].items.map((p, i) => ({p, i}));
   box.innerHTML = items.map(({p, i}) => { const th = G.thumbs && G.thumbs[i]; if (th && th.cost == null) layCard(i);
-    return `<button class="scard reveal${p.main ? ' main' : ''}" data-home="${i}">${th ? th.svg : '<div class="skel"></div>'}${p.main ? '<span class="badge">Main design · wheelchair-ready</span>' : ''}<b>${esc(p.name)}</b><span>${th ? `${th.area.toFixed(1)} m² · ${th.mods} modules · from ${money(th.cost)}` : 'Preparing…'}</span></button>`; }).join('');
+    return `<button class="scard reveal${p.main ? ' main' : ''}" data-home="${i}">${th ? th.svg : '<div class="skel"></div>'}${p.main ? '<span class="badge">Our main design</span>' : ''}<b>${esc(p.name)}</b><span>${th ? `${th.area.toFixed(1)} m² · ${th.mods} modules · from ${money(th.cost)}` : 'Preparing…'}</span></button>`; }).join('');
   box.querySelectorAll('[data-it],[data-op]').forEach(el => { el.removeAttribute('data-it'); el.removeAttribute('data-op'); });
   observeReveal();
   const costsK = (G.thumbs || []).slice(0, PRESET_GROUPS[0].items.length).filter(t => t && t.cost != null).map(t => t.cost);
   const all = (G.thumbs || []).filter(t => t && t.cost != null && t.area <= 25.0001).map(t => t.cost);
   const min = all.length ? Math.min(...all) : null;
   const hf = $('#heroFrom'); if (hf) hf.innerHTML = min ? `Estimated from <b>${money(min)}</b>, factory-direct` : 'Estimated price shown as you design';
-  heroBlueprint();
+  heroBlueprint(); buildSiteCluster();
 }
 let heroTimer = null;
 function heroPlansStatic() {
@@ -1257,6 +1367,14 @@ function buildAsm() {
   h += `<g class="asm-badge"><g transform="translate(500 660)"><rect x="-120" y="-24" width="240" height="48" rx="24" fill="#1E2A2E"/><text y="7" text-anchor="middle" fill="#fff" font-size="19" font-weight="700" font-family="Archivo, Arial, sans-serif">Ready to live in</text></g></g>`;
   svg.innerHTML = h;
   return svg;
+}
+function buildSiteCluster() {
+  const box = document.getElementById('siteCluster'); if (!box || box.dataset.done || !G.thumbs || !G.thumbs[0] || !G.thumbs[0].state) return;
+  box.dataset.done = '1'; const st = G.thumbs[0].state, cl = clusterLayout(st, 6);
+  box.innerHTML = clusterSVG(st, cl, {labels:false});
+  const g = GS();
+  if (g && window.ScrollTrigger) { const homes = box.querySelectorAll('.cl-home'); g.set(homes, {opacity:0, scale:.85, transformOrigin:'50% 50%'});
+    g.to(homes, {opacity:1, scale:1, duration:.7, stagger:.22, ease:'back.out(1.6)', scrollTrigger:{trigger:box, start:'top 75%', once:true}}); }
 }
 function buildFlow() {
   const svg = document.getElementById('flowSvg'); if (!svg) return;
@@ -1427,5 +1545,5 @@ function fitAspect() {
   G.view = {x:cx - w/2, y:cy - h/2, w, h}; svg.setAttribute('viewBox', `${G.view.x} ${G.view.y} ${w} ${h}`);
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
-window.__mhb = {get S() { return S; }, G, autoArrange, buildGeo, costs, validate};
+window.__mhb = {get S() { return S; }, G, autoArrange, buildGeo, costs, validate, findSpot, newItem, bodyPoly, walkCheck, exitSegments, bedExitDist, turnCheck, solidPolys};
 })();

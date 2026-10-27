@@ -56,14 +56,22 @@ function autoOpenings(geo) {
     + (da === 'side' ? (vertical(e) ? 0 : 3000) : da === 'end' ? (Math.abs(e.u[0]) > .9 ? 0 : 3000) : 0);
   const de = geo.ext.filter(e => dry(e) && e.len >= 1300 && !isEnd(e, bedY)).sort((a, b) => dsc(a) - dsc(b))[0];
   const dType = S.program.access ? 'door_wide' : 'door';
-  if (de) ops.push(newOpening(dType, de.key, de.len / 2, {pri:9}));
-  if (de && S.program.secondExit) {
+  const fixedDoors = (S.hints.doors || []).map(d => {
+    const e = geo.ext.filter(x => (x.mod === d.mod || x.mod.startsWith(d.mod)) && dot(mul(x.n, -1), d.out) > .9 && x.len >= 1200).sort((a, b) => b.len - a.len)[0];
+    if (!e) return null; const ax = Math.abs(d.out[0]) > .5 ? 1 : 0, forward = e.u[ax] >= 0, w = OPN[dType].w;
+    return newOpening(dType, e.key, clamp((forward ? d.at : 1 - d.at) * e.len, w / 2 + 150, e.len - w / 2 - 150), {pri:9}); }).filter(Boolean);
+  if (fixedDoors.length) ops.push(...fixedDoors);
+  else if (de) ops.push(newOpening(dType, de.key, de.len / 2, {pri:9}));
+  if (S.program.secondExit && S.hints.extraDoor) {
+    const d = S.hints.extraDoor, e = geo.ext.filter(x => (x.mod === d.mod || x.mod.startsWith(d.mod)) && dot(mul(x.n, -1), d.out) > .9 && x.len >= 1100).sort((a, b) => b.len - a.len)[0];
+    if (e) { const ax = Math.abs(d.out[0]) > .5 ? 1 : 0, w = OPN[dType].w; ops.push(newOpening(dType, e.key, clamp((e.u[ax] >= 0 ? d.at : 1 - d.at) * e.len, w / 2 + 150, e.len - w / 2 - 150), {pri:9})); }
+  } else if (fixedDoors.length < 2 && de && S.program.secondExit) {
     const far = geo.ext.filter(e => dry(e) && e.len >= 1300 && e.key !== de.key && !isEnd(e, bedY)).sort((a, b) => Math.hypot(mid(b)[0] - mid(de)[0], mid(b)[1] - mid(de)[1]) - Math.hypot(mid(a)[0] - mid(de)[0], mid(a)[1] - mid(de)[1]))[0];
     if (far) ops.push(newOpening(dType, far.key, far.len / 2, {pri:9}));
   }
   const ge = geo.ext.filter(e => e.mod === 'C' && isEnd(e, bedY)).sort((a, b) => b.len - a.len)[0];
   if (ge) {
-    if (ge.len >= 2600 && !S.program.secondExit) ops.push(newOpening('slide', ge.key, ge.len / 2, {w:Math.min(2000, ge.len - 500), pri:8}));
+    if (ge.len >= 2600) ops.push(newOpening('glasswall', ge.key, ge.len / 2, {w:Math.min(2000, ge.len - 500), pri:8}));
     else if (ge.len >= 1200) ops.push(newOpening('win_tall', ge.key, ge.len / 2, {w:Math.min(1600, ge.len - 420), pri:8}));
   }
   const oe = geo.ext.filter(e => e.mod === 'C' && isEnd(e, otherY) && dry(e)).sort((a, b) => b.len - a.len)[0];
@@ -95,7 +103,7 @@ function programItems() {
   if (p.wardrobe) list.push(st === 'japanese' ? 'oshiire' : st === 'korean' ? 'jang' : 'wardrobe');
   if (st === 'japanese') list.push('kotatsu');
   else if (st === 'korean') { if (p.sofa && p.sofa !== 'none') list.push(p.sofa); list.push('soban'); }
-  else { if (p.sofa && p.sofa !== 'none') list.push(p.sofa); if (p.dining) list.push('dining'); }
+  else { if (p.sofa && p.sofa !== 'none') list.push(p.sofa); if (p.nook) list.push('nook'); else if (p.dining) list.push('dining'); }
   if (p.desk) list.push('desk');
   if (p.getabako) list.push('getabako'); else if (p.shoe) list.push('shoe');
   if (p.pantry) list.push('pantry');
@@ -111,7 +119,7 @@ function programItems() {
 
 function autoArrange(mode) {
   const keep = JSON.stringify(S); let best = null;
-  const ess = ['kitchen', 'bed160', 'bed140', 'bed90', 'tatamibed', 'wallbed', 'energy', 'shower', 'bath', 'ofuro', 'toilet', 'wc', 'basin', 'sofabed', 'accshower', 'acctoilet', 'accbasin'];
+  const ess = ['kitchen', 'bed160', 'bed140', 'bed90', 'tatamibed', 'platformbed', 'wallbed', 'energy', 'shower', 'bath', 'ofuro', 'toilet', 'wc', 'basin', 'sofabed', 'accshower', 'acctoilet', 'accbasin'];
   for (const kf of [false, true]) {
     S = JSON.parse(keep);
     const f = arrangeOnce(mode, kf);
@@ -144,7 +152,7 @@ function arrangeOnce(mode, kitFirst) {
       const pool = parts.filter(p => p.central && p.len >= 1000);
       const dp = (pool.length ? pool : parts.filter(p => p.len >= 900)).sort((a, b) => Math.abs(a.c[1] - otherY) - Math.abs(b.c[1] - otherY))[0];
       parts.forEach(p => {
-        const it = newItem('partition', {x:p.c[0], y:p.c[1], rot:p.rot, w:Math.round(p.len)}); it.opt = {door:false, dpos:.5, dw:S.program.access ? 900 : 700};
+        const it = newItem('partition', {x:p.c[0], y:p.c[1], rot:p.rot, w:Math.round(p.len)}); it.opt = {door:false, dpos:.5, dw:S.program.access ? 1000 : 700};
         if (p === dp) { const nearB = Math.abs(p.ze.b[1] - otherY) < Math.abs(p.ze.a[1] - otherY), fromEnd = Math.min(S.program.access ? 1500 : 1350, p.len / 2);
           it.opt.door = true; it.opt.dpos = clamp((nearB ? p.len - fromEnd : fromEnd) / p.len, 0, 1); }
         S.items.push(it);
@@ -177,7 +185,7 @@ function arrangeOnce(mode, kitFirst) {
       (scopeC ? [cz0] : geo.zones).forEach(z => { for (let i = 0; i < z.poly.length; i++) { const a = z.poly[i], b = z.poly[(i + 1) % z.poly.length];
         if ((a[1] - y0) * (b[1] - y0) <= 0 && Math.abs(a[1] - b[1]) > 1e-6) { const x = a[0] + (y0 - a[1]) * (b[0] - a[0]) / (b[1] - a[1]); xmin = Math.min(xmin, x); xmax = Math.max(xmax, x); } } });
       if (xmax > xmin) { const it = newItem('partition', {x:(xmin + xmax) / 2, y:y0, rot:0, w:Math.round(xmax - xmin)});
-        it.opt = {door:true, dpos:clamp((cx + 350 - xmin) / (xmax - xmin), .12, .88), dw:S.program.access ? 900 : 700}; S.items.push(it); }
+        it.opt = {door:true, dpos:S.hints.bathDoorAt != null ? S.hints.bathDoorAt : clamp((cx + 350 - xmin) / (xmax - xmin), .12, .88), dw:S.program.access ? 1000 : 700}; S.items.push(it); }
     }
   }
   if (!cZone) cZone = geo.zones.find(z => z.key === 'C');
@@ -287,17 +295,23 @@ function arrangeOnce(mode, kitFirst) {
     const target = [cx, bedY];
     const sc = (it, c) => dist([it.x, it.y], target) + (c.edge && Math.abs(c.edge.u[0]) > .9 ? 0 : 250);
     const wingBed = S.hints.bedIn === 'wing' ? dryZones.filter(z => z.key !== 'C') : null;
-    const tryBed = t => (wingBed && wingBed.length && place(t, wingBed, (it, c) => (c.edge && Math.abs(c.edge.u[0]) > .9 ? 400 : 0) - dist([it.x, it.y], [cx, -1e4]) * 0)) || place(t, bedZones, sc) || place(t, dryZones, sc) || place(t, dryZones, sc, {free:true});
+    const tryBed = t => (t === 'platformbed' && place(t, dryZones, (it, c) => it.y + it.x * .5 + (c.edge && Math.abs(c.edge.u[0]) > .9 ? 1200 : 0)))
+      || (wingBed && wingBed.length && place(t, wingBed, (it, c) => it.y + (c.edge && Math.abs(c.edge.u[0]) > .9 ? 0 : 900))) || place(t, bedZones, sc) || place(t, dryZones, sc) || place(t, dryZones, sc, {free:true});
     if (tryBed(bedT)) return;
-    const alt = ['bed140', 'bed90'].filter(t => BED_TYPES.indexOf(t) > BED_TYPES.indexOf(bedT));
+    const alt = bedT === 'platformbed' ? ['bed160', 'bed140'] : ['bed140', 'bed90'].filter(t => BED_TYPES.indexOf(t) > BED_TYPES.indexOf(bedT));
     for (const t of alt) if (tryBed(t)) { S.swapped = (S.swapped || []).concat([`${CAT[bedT].label} did not fit away from the exit, used ${CAT[t].label.toLowerCase()}`]); return; }
     if (bedT !== 'wallbed' && tryBed('wallbed')) { S.swapped = (S.swapped || []).concat([`${CAT[bedT].label} did not fit away from the exit, used a wall bed`]); return; }
     failed.push(bedT);
   };
   const doKitchen = () => {
     if (want.includes('kitchen')) {
-      const sc = (it, c) => -(c.edge ? c.edge.len : 0) * 2 + dist([it.x, it.y], entry) * .3 - (windows.some(w => dist(w, [it.x, it.y]) < 900) ? 600 : 0);
-      if (!tryShrink('kitchen', kitZones, sc, 1200) && !tryShrink('kitchen', [liveHalf, ...dryZones], sc, 1200)) failed.push('kitchen');
+      const outerK = S.hints.bedIn === 'wing';
+      const sc = (it, c) => -(c.edge ? c.edge.len : 0) * 2 + dist([it.x, it.y], entry) * .3 - (windows.some(w => dist(w, [it.x, it.y]) < 900) ? 600 : 0) + (outerK && c.edge && Math.abs(c.edge.u[0]) > .9 ? 9000 : 0) + (outerK && it.x < cx ? 9000 : 0);
+      let rightZ = null;
+      if (outerK && cZone) { const P = dedupe(clipHalf(cZone.poly, [1, 0], cx + 200)); if (P.length >= 3) { const c0 = centroid(P);
+        rightZ = Object.assign({}, cZone, {poly:P, edges:P.map((a, i) => { const b = P[(i + 1) % P.length], d = sub(b, a), l = len(d), u = nrm(d); let n = [-u[1], u[0]]; if (dot(n, sub(c0, mul(add(a, b), .5))) < 0) n = mul(n, -1);
+          const onCut = Math.abs(a[0] - (cx + 200)) < 2 && Math.abs(b[0] - (cx + 200)) < 2; return {a, b, len:l, u, n, wall:!onCut}; })}); } }
+      if (!(rightZ && tryShrink('kitchen', [rightZ], sc, 1200)) && !tryShrink('kitchen', kitZones, sc, 1200) && !tryShrink('kitchen', [liveHalf, ...dryZones], sc, 1200)) failed.push('kitchen');
     }
     if (want.includes('fridge')) { const k = S.items.find(i => i.type === 'kitchen'); if (!place('fridge', [...kitZones, ...dryZones], it => k ? dist([it.x, it.y], [k.x, k.y]) : 0)) failed.push('fridge'); }
   };
@@ -306,12 +320,13 @@ function arrangeOnce(mode, kitFirst) {
   if (washerToKitchen) { const k = S.items.find(i => i.type === 'kitchen'); if (k) { k.opt = Object.assign({}, k.opt, {washer:true}); } else failed.push('washer'); }
   const bed = S.items.find(i => CAT[i.type].zone === 'bed');
   const kitItem = () => S.items.find(i => i.type === 'kitchen');
-  ['energy', 'kotatsu', 'soban', 'dining', 'sofa', 'sofabed', 'wardrobe', 'oshiire', 'jang', 'getabako', 'shoe', 'cleaning', 'pantry', 'desk', 'bins', 'nightstand', 'divider', 'stove', 'shelf'].filter(t => want.includes(t)).forEach(t => {
+  ['energy', 'nook', 'kotatsu', 'soban', 'dining', 'sofa', 'sofabed', 'wardrobe', 'oshiire', 'jang', 'getabako', 'shoe', 'cleaning', 'pantry', 'desk', 'bins', 'nightstand', 'divider', 'stove', 'shelf'].filter(t => want.includes(t)).forEach(t => {
     let zs = dryZones, sc;
     if (t === 'wardrobe' || t === 'shelf' || t === 'oshiire' || t === 'jang' || t === 'divider') sc = it => (bed ? dist([it.x, it.y], [bed.x, bed.y]) : 0) + (t === 'shelf' ? 600 : 0);
     else if (t === 'nightstand') sc = it => bed ? dist([it.x, it.y], [bed.x, bed.y]) - (dist([it.x, it.y], [bed.x, bed.y]) < bed.w / 2 + 500 ? 800 : 0) : 0;
     else if (t === 'kotatsu' || t === 'soban') { zs = [liveHalf, cZone, ...dryZones]; sc = it => Math.min(...windows.map(w => dist(w, [it.x, it.y])), 4000) * .5 + dist([it.x, it.y], [cx, otherY]) * .3; }
     else if (t === 'getabako') sc = it => dist([it.x, it.y], entry);
+    else if (t === 'nook') sc = it => -it.y + (S.hints.bedIn === 'wing' && it.x > cx ? 1500 : 0);
     else if (t === 'pantry' || t === 'bins') sc = it => { const k = kitItem(); return k ? dist([it.x, it.y], [k.x, k.y]) : dist([it.x, it.y], entry); };
     else if (t === 'cleaning') sc = it => dist([it.x, it.y], entry) * .7;
     else if (t === 'sofa' || t === 'sofabed') { zs = [liveHalf, ...dryZones]; sc = it => dist([it.x, it.y], [cx, otherY]) * .6 + (bed ? -dist([it.x, it.y], [bed.x, bed.y]) * .3 : 0); }
@@ -329,7 +344,7 @@ function arrangeOnce(mode, kitFirst) {
   });
   if (want.includes('dryrack')) { const z = wetZs[0] || kitZones[0]; if (z) { const c = centroid(z.poly), it = newItem('dryrack', {x:c[0], y:c[1], rot:0}); S.items.push(it); } }
   // ----- walkway repair: move or drop furniture that blocks the way to anything
-  const movable = ['bed160', 'bed140', 'bed90', 'tatamibed', 'sofa', 'sofabed', 'dining', 'foldtable', 'kotatsu', 'soban', 'divider', 'nightstand', 'stove', 'shoe', 'getabako', 'shelf', 'desk', 'bins', 'cleaning', 'jang', 'wardrobe', 'oshiire', 'pantry', 'fridge'];
+  const movable = ['bed160', 'bed140', 'bed90', 'tatamibed', 'platformbed', 'sofa', 'sofabed', 'dining', 'foldtable', 'kotatsu', 'soban', 'divider', 'nightstand', 'stove', 'shoe', 'getabako', 'shelf', 'desk', 'bins', 'cleaning', 'jang', 'wardrobe', 'oshiire', 'pantry', 'fridge'];
   for (let pass = 0; pass < 4; pass++) {
     const wk = walkCheck(geo); if (!wk || !wk.unreachable.length) break;
     const before = wk.unreachable.length; let fixed = false;
@@ -370,7 +385,7 @@ function arrangeOnce(mode, kitFirst) {
     });
   }
   { const r2 = readyForTwo(), k = S.items.find(i => i.type === 'kitchen');
-    if (k && k.w >= 1500 && r2.some(x => !x.ok && (x.k === 'Table for two' || x.k === 'Seats for two'))) k.opt = Object.assign({}, k.opt, {pullout:true}); }
+    if (k && k.w >= 1200 && r2.some(x => !x.ok && (x.k === 'Table for two' || x.k === 'Seats for two'))) k.opt = Object.assign({}, k.opt, {pullout:true}); }
   if (S.program.maxStorage) fillStorage(geo, (t, sc) => place(t, dryZones, sc));
   S.unplaced = failed.slice();
   return failed;
@@ -384,7 +399,7 @@ function fillStorage(geo, placer) {
     const r = placer ? placer(t, () => 0) : (() => { const sp = findSpot(t, null, geo); if (!sp) return null; const it = newItem(t, sp); S.items.push(it); return it; })();
     if (!r) continue;
     const w = walkCheck(geo);
-    if ((w ? w.unreachable.length : 0) > base) { S.items = S.items.filter(i => i !== r); continue; }
+    if ((w ? w.unreachable.length : 0) > base || (S.program.access && !turnCheck(geo).living)) { S.items = S.items.filter(i => i !== r); continue; }
     added++;
   }
   // overhead cabinets use the wall above head height, so they cost no floor space
@@ -399,18 +414,21 @@ const SH = (l, r) => ({Wc:2500, L:5400, left:l, right:r});
 const SPL = (a, b) => b == null ? {type:'straight', a, b:a} : {type:'diag', a, b};
 const SHAPE_A = () => SH(WG(0, 5400, 1000, 5400), WG(0, 3200, 0, 2200));
 const SHAPE_B = () => SH(WG(0, 3200, 0, 2200), WG(0, 5400, 1000, 5400, SPL(3200)));
-const ORANGE = (inTop, inBot) => ({on:true, w:3000, inTop, inBot, outTop:inTop, outBot:inBot, split:{type:'none', a:2200, b:3200}});
-const BLUE = (inTop, inBot) => ({on:true, w:2000, inTop, inBot, outTop:inTop, outBot:inBot, split:{type:'none', a:2200, b:3200}});
-const SHAPE_2M = () => ({Wc:3000, L:5500, left:BLUE(1300, 5500), right:WOFF()});
-const ACC = {access:true, secondExit:true, bed:'wallbed', dining:true, sofa:'none', wardrobe:true, desk:false};
+const BIGM = (inTop, inBot) => ({on:true, w:3100, inTop, inBot, outTop:inTop, outBot:inBot, split:{type:'none', a:2200, b:3200}});
+const SMALLM = (inTop, inBot) => ({on:true, w:2100, inTop, inBot, outTop:inTop, outBot:inBot, split:{type:'none', a:2200, b:3200}});
+const SHAPE_2M = () => ({Wc:3100, L:5200, wallT:250, roof:'gable', left:SMALLM(1000, 5200), right:WOFF()});
+const MAIN_PROG = {access:false, secondExit:false, bed:'platformbed', dining:false, sofa:'none', wardrobe:false, desk:false, bathing:'shower'};
+const ACC = {access:true, secondExit:false, bed:'bed160', dining:true, nook:true, sofa:'none', wardrobe:true, desk:false};
+const DOOR_MAIN = [{mod:'C', out:[1, 0], at:.82}];
+const LINK_DOOR = {mod:'LW', out:[0, -1], at:.55};
+const H2M = {bathWing:'end', bathScope:'central', bedEnd:'bottom', kitchenIn:'central', doorAt:'side', bedIn:'wing', doors:DOOR_MAIN, extraDoor:LINK_DOOR, bathDoorAt:.3};
 const PRESET_GROUPS = [
-  {title:'Accessible two-module home', note:'Our main design: a 16.5 m² and an 8.4 m² module. Wheelchair-friendly, two exits, fold-away bed and table for open floor.', items:[
-    {name:'Accessible two-module home', main:true, fixed:true, shape:SHAPE_2M, hints:{bathWing:'end', bathScope:'central', bedEnd:'bottom', kitchenIn:'central', doorAt:'side', bedIn:'wing'}, prog:ACC, site:{entry:'ramp', rise:450, north:0}},
-    {name:'As drawn, compact 1.3 m bathroom', fixed:true, shape:SHAPE_2M, hints:{bathWing:'end', bathScope:'central', bedEnd:'bottom', kitchenIn:'central', doorAt:'side', bathDepth:1300, bedIn:'wing'}, prog:{secondExit:true, bed:'wallbed', dining:true, sofa:'none', bathing:'shower'}},
-    {name:'Blue + orange + blue, 33.3 m²', shape:() => ({Wc:3000, L:5500, left:BLUE(1300, 5500), right:BLUE(1300, 5500)}), hints:{bathWing:'end', bathScope:'central', bedEnd:'bottom', kitchenIn:'wing', doorAt:'side'}, prog:Object.assign({}, ACC, {bed:'bed160', sofa:'sofa'}), site:{entry:'ramp', rise:450}},
-    {name:'Blue + two orange, 41.4 m²', shape:() => ({Wc:3000, L:5500, left:BLUE(1300, 5500), right:ORANGE(0, 5500)}), hints:{bathWing:'right', bedEnd:'bottom', kitchenIn:'central', doorAt:'side'}, prog:Object.assign({}, ACC, {bed:'bed160', sofa:'sofa', desk:true}), site:{entry:'ramp', rise:450}},
-    {name:'Orange + blue + orange, 41.4 m²', shape:() => ({Wc:2000, L:4200, left:ORANGE(-1300, 4200), right:ORANGE(-1300, 4200)}), hints:{bathWing:'left', bedEnd:'bottom', kitchenIn:'wing', doorAt:'side'}, prog:Object.assign({}, ACC, {bed:'bed160', sofa:'sofa', desk:true}), site:{entry:'ramp', rise:450}},
-    {name:'Two blue + orange, 33.3 m²', shape:() => ({Wc:2000, L:4200, left:BLUE(0, 4200), right:ORANGE(-1300, 4200)}), hints:{bathWing:'right', bedEnd:'bottom', kitchenIn:'central', doorAt:'side'}, prog:Object.assign({}, ACC, {bed:'bed160'}), site:{entry:'ramp', rise:450}},
+  {title:'Our home: two modules, 24.94 m²', note:'Our main design, as in our render: a 16.12 m² and an 8.82 m² module, one outside door, a raised sleeping platform with storage, gable steel roof. Add a second door from Furnish to link another module.', items:[
+    {name:'Our home, as rendered', main:true, fixed:true, shape:SHAPE_2M, hints:Object.assign({}, H2M, {bathDepth:1250}), prog:MAIN_PROG, site:{entry:'steps', rise:740, north:0}},
+    {name:'Wheelchair-accessible version', fixed:true, shape:SHAPE_2M, hints:Object.assign({}, H2M, {bathDepth:2300, bathDoorAt:.65}), prog:Object.assign({}, ACC, {bed:'wallbed', kitchen:1500}), site:{entry:'ramp', rise:450, north:0}},
+    {name:'Small + small + big, 33.76 m²', shape:() => ({Wc:2100, L:4200, wallT:250, roof:'gable', left:SMALLM(0, 4200), right:BIGM(-1000, 4200)}), hints:{bathWing:'right', bedEnd:'bottom', kitchenIn:'central', doorAt:'side'}, prog:{bed:'platformbed', sofa:'sofa', dining:true}},
+    {name:'Small + big + small, 33.76 m²', shape:() => ({Wc:3100, L:5200, wallT:250, roof:'gable', left:SMALLM(1000, 5200), right:SMALLM(1000, 5200)}), hints:{bathWing:'end', bathScope:'central', bedEnd:'bottom', kitchenIn:'wing', doorAt:'side'}, prog:{bed:'bed160', sofa:'sofa', dining:true}},
+    {name:'Small + big + big, 41.06 m²', shape:() => ({Wc:3100, L:5200, wallT:250, roof:'gable', left:SMALLM(1000, 5200), right:BIGM(0, 5200)}), hints:{bathWing:'right', bedEnd:'bottom', kitchenIn:'central', doorAt:'side'}, prog:{bed:'bed160', sofa:'sofa', dining:true, desk:true}},
   ]},
   {title:'Signature homes, three modules', note:'All 24.9 m², two outlines with different room layouts.', items:[
     {name:'Bath strip, bed by the glass', shape:SHAPE_A, hints:{bathWing:'left', bedEnd:'top', kitchenIn:'wing'}, prog:{bathing:'bath'}},
@@ -448,16 +466,17 @@ function applyPreset(p) {
     return readyForTwo().filter(x => !x.ok).length * 10
       + (S.unplaced || []).filter(t => ['kitchen', 'toilet', 'wc', 'basin', 'shower', 'bath', 'ofuro', 'accshower', 'acctoilet', 'accbasin'].concat(BED_TYPES).includes(t)).length * 30
       + Object.values(v.items).filter(x => x.length).length * 15 + Object.values(v.ops).filter(x => x.length).length * 15
-      + v.checks.filter(c => c.state !== 'ok' && !/wide-load|limit|faces|No room found|Ready for two/i.test(c.text)).length * 7; };
-  const progs = p.fixed ? [base, Object.assign({}, base, {desk:false}), Object.assign({}, base, {desk:false, kitchen:Math.min(base.kitchen, 1500)})] : [base, Object.assign({}, base, {desk:false}), Object.assign({}, base, {desk:false, bathing:'shower'}), Object.assign({}, base, {desk:false, bathing:'shower', kitchen:Math.min(base.kitchen, 1500)})];
+      + v.checks.filter(c => c.state !== 'ok' && !/wide-load|limit|faces|No room found|Ready for two/i.test(c.text)).reduce((k, c) => k + (/wheelchair|turning|Step-free/i.test(c.text) ? 25 : 7), 0); };
+  const progs = p.fixed ? [base, Object.assign({}, base, {kitchen:Math.min(base.kitchen, 1500)}), Object.assign({}, base, {bed:'bed140'}), Object.assign({}, base, {bed:'bed140', kitchen:1500}), Object.assign({}, base, {bed:'wallbed'})] : [base, Object.assign({}, base, {desk:false}), Object.assign({}, base, {desk:false, bathing:'shower'}), Object.assign({}, base, {desk:false, bathing:'shower', kitchen:Math.min(base.kitchen, 1500)})];
   const hintsList = [p.hints];
   if (!p.fixed) ['left', 'right', 'end'].forEach(bw => ['wing', 'central', 'bathwing'].forEach(ki => ['auto', 'side'].forEach(dr => {
     if (ki === 'bathwing' && bw === 'end') return;
     const h = Object.assign({}, p.hints, {bathWing:bw, kitchenIn:ki, doorAt:dr});
     if (JSON.stringify(h) !== JSON.stringify(Object.assign({doorAt:'auto'}, p.hints))) hintsList.push(h); })));
-  const tries = []; progs.forEach(pr => tries.push([p.hints, pr])); hintsList.slice(1).forEach(h => progs.slice(0, 2).forEach(pr => tries.push([h, pr])));
+  const tries = []; progs.forEach(pr => tries.push([p.hints, pr]));
+  if (p.fixed && base.access) [2100, 2200, 2300, 2400].forEach(dp => [base, Object.assign({}, base, {bed:'bed140', kitchen:1500}), Object.assign({}, base, {bed:'wallbed', maxStorage:false}), Object.assign({}, base, {bed:'bed140', maxStorage:false, wardrobe:false})].forEach(pr => tries.push([Object.assign({}, p.hints, {bathDepth:dp}), pr]))); hintsList.slice(1).forEach(h => progs.slice(0, 2).forEach(pr => tries.push([h, pr])));
   let best = null, failedBest = [];
-  for (const [h, pr] of tries.slice(0, 26)) {
+  for (const [h, pr] of tries.slice(0, 30)) {
     S.shape = JSON.parse(shape); S.hints = Object.assign({}, h); S.program = JSON.parse(JSON.stringify(pr)); S.items = []; S.openings = [];
     let f; try { f = autoArrange('all'); } catch (e) { continue; }
     const sc = misses();
